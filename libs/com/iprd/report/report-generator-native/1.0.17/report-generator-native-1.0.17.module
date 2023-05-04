@@ -36,11 +36,11 @@
         {
           "name": "report-generator.klib",
           "url": "report-generator-native-1.0.17.klib",
-          "size": 84348,
-          "sha512": "6976eb6859ad16a54739bf1a86e576bd965e618e988ac5a80622fa9c016ebd322bd968e8cc9849878c84eaba6075e4a4c91c5ec01c34b2365e85f9061db8a52e",
-          "sha256": "18231699db06c3d374bd1e641a141377d62009bf0b08f324e737e3ac5791f190",
-          "sha1": "4a8347f43a9b1a8da36f944be9869b7ea268037c",
-          "md5": "bc10ff647ba7caf339f610d313cd3a3f"
+          "size": 86193,
+          "sha512": "fb6ff2d663d47f3bbb172629956eed9c5b952d8415fc5ec373a1093460420a7c7dbc5c468deb720f805d9b2c39cf927b7116e0f064153d00e2594b2df4db2c41",
+          "sha256": "13bf351b0e844578c437e2ae503d1420bb23ef1377b3fcb1dc391db4a8ba958b",
+          "sha1": "13980f0c88873da774d357971a91db2d7a58f481",
+          "md5": "125b0dc3166107fb432af652505299b9"
         }
       ]
     },

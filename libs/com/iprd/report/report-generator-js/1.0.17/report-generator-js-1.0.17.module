@@ -42,11 +42,11 @@
         {
           "name": "report-generator-jslegacy-1.0.17.jar",
           "url": "report-generator-js-1.0.17.jar",
-          "size": 33121,
-          "sha512": "d0b70a20ac4ffe3550073d9e0b327de84bb36ff966c77bdee41c61c7119cffb767773391012102535d98bc412611cdd665777192ae3950449b593e4a2fb2d503",
-          "sha256": "eb6329cc23efcfc10863776caeeea556d4ed76e1a6543a24cb98648a8fe63cef",
-          "sha1": "396be8200b00357e8b07c4ce7e18a087603731e7",
-          "md5": "c1ab779050103f411e7b7914af6d3a7d"
+          "size": 33628,
+          "sha512": "8f7ab0bb49f846ece5c850297217bc6bf3061f06e93c71633915aba295ea0decc93aec33ab6111e86f4f95f0605691c511c52bbe654b80019fd07f65eaddb579",
+          "sha256": "37632ad49f6d3ce7276e1829d3c981be9add62eabdd6c46c1fcc0f8c694bc5ca",
+          "sha1": "cc1d3c3c52602494d05e149bc2fa082150c753d5",
+          "md5": "6283802d0fb4e9f98e1f9d0dd43988c8"
         }
       ]
     },
@@ -77,11 +77,11 @@
         {
           "name": "report-generator-jslegacy-1.0.17.jar",
           "url": "report-generator-js-1.0.17.jar",
-          "size": 33121,
-          "sha512": "d0b70a20ac4ffe3550073d9e0b327de84bb36ff966c77bdee41c61c7119cffb767773391012102535d98bc412611cdd665777192ae3950449b593e4a2fb2d503",
-          "sha256": "eb6329cc23efcfc10863776caeeea556d4ed76e1a6543a24cb98648a8fe63cef",
-          "sha1": "396be8200b00357e8b07c4ce7e18a087603731e7",
-          "md5": "c1ab779050103f411e7b7914af6d3a7d"
+          "size": 33628,
+          "sha512": "8f7ab0bb49f846ece5c850297217bc6bf3061f06e93c71633915aba295ea0decc93aec33ab6111e86f4f95f0605691c511c52bbe654b80019fd07f65eaddb579",
+          "sha256": "37632ad49f6d3ce7276e1829d3c981be9add62eabdd6c46c1fcc0f8c694bc5ca",
+          "sha1": "cc1d3c3c52602494d05e149bc2fa082150c753d5",
+          "md5": "6283802d0fb4e9f98e1f9d0dd43988c8"
         }
       ]
     },
@@ -112,11 +112,11 @@
         {
           "name": "report-generator-jsir-1.0.17.klib",
           "url": "report-generator-js-1.0.17.klib",
-          "size": 92841,
-          "sha512": "afc11101dc8b33d9616403a555e34f7b724de59449bf32f0e8dec4e573bb2aa0cd11167e235d54c8aff166e1a169773d3e1e784d45916e61ee041a857a41d18e",
-          "sha256": "a856b98aa1dcc00b830268c4680e482a1e2af0c1f71b0dd2f1de25f1cffcb749",
-          "sha1": "b714000a4a844a74970f2d8adaedbb498b3e728d",
-          "md5": "186d1123d1d09335b99158d15f03ca38"
+          "size": 94722,
+          "sha512": "fb4c12f913b5f38276c2fe39b72767f5d1a94dff0744c26db41464f7bfd278753a8b4ef964771a6030158d6d7e82ed2ccbd04acfba2b146988f7523948164e89",
+          "sha256": "09484df8a8541589b3586e812e0f2e4ff68930c2609c86dc3ae6201b251ea7cb",
+          "sha1": "c38257add2dc56d7e15bbcb09e3333d6043d184b",
+          "md5": "78c22e2d2ff38df2d9d02f792ccfe75e"
         }
       ]
     },
@@ -147,11 +147,11 @@
         {
           "name": "report-generator-jsir-1.0.17.klib",
           "url": "report-generator-js-1.0.17.klib",
-          "size": 92841,
-          "sha512": "afc11101dc8b33d9616403a555e34f7b724de59449bf32f0e8dec4e573bb2aa0cd11167e235d54c8aff166e1a169773d3e1e784d45916e61ee041a857a41d18e",
-          "sha256": "a856b98aa1dcc00b830268c4680e482a1e2af0c1f71b0dd2f1de25f1cffcb749",
-          "sha1": "b714000a4a844a74970f2d8adaedbb498b3e728d",
-          "md5": "186d1123d1d09335b99158d15f03ca38"
+          "size": 94722,
+          "sha512": "fb4c12f913b5f38276c2fe39b72767f5d1a94dff0744c26db41464f7bfd278753a8b4ef964771a6030158d6d7e82ed2ccbd04acfba2b146988f7523948164e89",
+          "sha256": "09484df8a8541589b3586e812e0f2e4ff68930c2609c86dc3ae6201b251ea7cb",
+          "sha1": "c38257add2dc56d7e15bbcb09e3333d6043d184b",
+          "md5": "78c22e2d2ff38df2d9d02f792ccfe75e"
         }
       ]
     }

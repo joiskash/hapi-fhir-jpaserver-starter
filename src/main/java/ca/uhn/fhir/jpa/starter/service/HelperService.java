@@ -14,26 +14,12 @@ import ca.uhn.fhir.rest.gclient.IQuery;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.gson.Gson;
-import com.google.gson.stream.JsonReader;
 import com.iprd.fhir.utils.*;
 import com.iprd.report.*;
 import com.iprd.report.model.FilterItem;
 import com.iprd.report.model.FilterOptions;
-import com.iprd.report.model.data.BarChartItemDataCollection;
-import com.iprd.report.model.data.BarComponentData;
-import com.iprd.report.model.data.LineChartItem;
-import com.iprd.report.model.data.LineChartItemCollection;
-import com.iprd.report.model.data.PieChartItem;
-import com.iprd.report.model.data.ScoreCardItem;
-import com.iprd.report.model.definition.ANCDailySummaryConfig;
-import com.iprd.report.model.definition.BarChartDefinition;
-import com.iprd.report.model.definition.BarChartItemDefinition;
-import com.iprd.report.model.definition.BarComponent;
-import com.iprd.report.model.definition.IndicatorItem;
-import com.iprd.report.model.definition.LineChart;
-import com.iprd.report.model.definition.LineChartItemDefinition;
-import com.iprd.report.model.definition.PieChartDefinition;
-import com.iprd.report.model.definition.TabularItem;
+import com.iprd.report.model.data.*;
+import com.iprd.report.model.definition.*;
 
 import android.util.Pair;
 
@@ -57,6 +43,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
+import com.iprd.report.model.definition.BarComponent;
+import com.iprd.report.model.definition.LineChart;
 import org.apache.commons.io.IOUtils;
 import org.hibernate.engine.jdbc.ClobProxy;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
@@ -88,6 +76,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
+import java.util.stream.Stream;
 
 import static org.hibernate.search.util.common.impl.CollectionHelper.asList;
 import static org.keycloak.util.JsonSerialization.mapper;
@@ -644,7 +633,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 
 	public ResponseEntity<?> getPieChartDataByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate,LinkedHashMap<String,String> filters, String env){
 		notificationDataSource = NotificationDataSource.getInstance();
-		List<PieChartItem> pieChartItems = new ArrayList<>();
+
 		List<PieChartDefinition> pieChartDefinitions = getPieChartItemDefinitionFromFile(env);
 		String organizationId = getOrganizationIdByPractitionerRoleId(practitionerRoleId);
 
@@ -655,14 +644,19 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		performCachingForPieChartData(pieChartDefinitions, idsAndOrgIdToChildrenMapPair.first, start, end,fhirSearchList);
 		List<String> facilityIds = idsAndOrgIdToChildrenMapPair.first;
 		logger.warn("leng: facility ids "+facilityIds.size());
-		for(PieChartDefinition pieChartDefinition: pieChartDefinitions){
-				String key = pieChartDefinition.getFhirPath()+String.join(",", fhirSearchList);
+		List<PieChartItemDataCollection> pieChartItemDataCollection = new ArrayList<>();
+		for (PieChartDefinition pieChartDefinition : pieChartDefinitions) {
+			List<PieChartItem> pieChartItems = new ArrayList<>();
+			for (PieChartCategoryDefinition pieChartItem : pieChartDefinition.getItem()) {
+				String key = pieChartItem.getFhirPath() + String.join(",", fhirSearchList) + pieChartDefinition.getCategoryId();
 				Double cacheValueSum = notificationDataSource
 					.getCacheValueSumByDateRangeIndicatorAndMultipleOrgId(start, end,
 						Utils.md5Bytes(key.getBytes(StandardCharsets.UTF_8)), facilityIds);
-				pieChartItems.add(new PieChartItem(pieChartDefinition.getId(), organizationId, pieChartDefinition.getName(), String.valueOf(cacheValueSum), pieChartDefinition.getChartId(), pieChartDefinition.getColorHex()));
+				pieChartItems.add(new PieChartItem(pieChartItem.getId(), organizationId, pieChartItem.getName(), String.valueOf(cacheValueSum), pieChartItem.getChartId(), pieChartItem.getColorHex()));
+			}
+			pieChartItemDataCollection.add(new PieChartItemDataCollection(pieChartDefinition.getCategoryId(), pieChartItems));
 		}
-		return ResponseEntity.ok(pieChartItems);
+		return ResponseEntity.ok(pieChartItemDataCollection);
 	}
 
 
@@ -744,16 +738,21 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 
 	private void performCachingForPieChartData(List<PieChartDefinition> pieChartDefinitions, List<String> facilityIds, Date startDate, Date endDate, List<String> fhirSearchList){
 		String filterString = String.join(",", fhirSearchList);
-		List<String> currentIndicatorMd5List = pieChartDefinitions.stream().map(pieChartDefinitionItem -> 
-			Utils.md5Bytes((pieChartDefinitionItem.getFhirPath()+filterString).getBytes(StandardCharsets.UTF_8))).collect(Collectors.toList()
-		);
-
+		List<String> currentIndicatorMd5List = pieChartDefinitions.stream().flatMap(pieChartDefinitionCategory -> {
+			if (pieChartDefinitionCategory != null) {
+				return pieChartDefinitionCategory.getItem().stream().map(pieChartDefinitionItem ->
+					Utils.md5Bytes((pieChartDefinitionItem.getFhirPath() + filterString + pieChartDefinitionCategory.getCategoryId()).getBytes(StandardCharsets.UTF_8))
+				);
+			} else {
+				return Stream.empty();
+			}
+		}).collect(Collectors.toList());
 		List<Date> dates = new ArrayList<>();
 		List<String> presentIndicators = notificationDataSource.getIndicatorsPresent(startDate, endDate);
 
 		List<String> existingIndicators = new ArrayList<>();
 		List<String> nonExistingIndicators = new ArrayList<>();
-		
+
 		for (String indicator: currentIndicatorMd5List){
 			if(presentIndicators.contains(indicator)){
 				existingIndicators.add(indicator);
@@ -772,11 +771,11 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			start = Date.valueOf(start.toLocalDate().plusDays(1));
 		}
 		logger.warn(
-				"Pie Cache present days: "+presentDates.toString()
+			"Pie Cache present days: "+presentDates.toString()
 				+"Cache existing indicators: "+existingIndicators.toString()
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
-				);
+		);
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
@@ -793,7 +792,6 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			});
 		}
 	}
-	
 	public ResponseEntity<?> getTabularDataByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate, LinkedHashMap<String, String> filters,String env) {
 		List<ScoreCardItem> scoreCardItems = new ArrayList<>();
 		List<TabularItem> tabularItemList = getTabularItemListFromFile(env);
@@ -925,38 +923,38 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		return ResponseEntity.ok(scoreCardResponseItems);
 	}
 
+public ResponseEntity<?> getBarChartData(String practitionerRoleId, String startDate, String endDate,LinkedHashMap<String,String> filters, String env) {
+	notificationDataSource = NotificationDataSource.getInstance();
+	List<BarChartItemDataCollection> barChartItems = new ArrayList<>();
+	List<BarChartDefinition> barCharts = getBarChartItemListFromFile(env);
+	String organizationId = getOrganizationIdByPractitionerRoleId(practitionerRoleId);
 
-	public ResponseEntity<?> getBarChartData(String practitionerRoleId, String startDate, String endDate,LinkedHashMap<String,String> filters, String env) {
-		notificationDataSource = NotificationDataSource.getInstance();
-		List<BarChartItemDataCollection> barChartItems = new ArrayList<>();
-		List<BarChartDefinition> barCharts = getBarChartItemListFromFile(env);
-		String organizationId = getOrganizationIdByPractitionerRoleId(practitionerRoleId);
+	Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(organizationId);
+	List<String> facilityIds = idsAndOrgIdToChildrenMapPair.first;
 
-		Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(organizationId);
-		List<String> facilityIds = idsAndOrgIdToChildrenMapPair.first;
-
-		Date start = Date.valueOf(startDate);
-		Date end = Date.valueOf(endDate);
-		List<String> fhirSearchList = getFhirSearchListByFilters(filters, env);
-		performCachingIfNotPresentForBarChart(barCharts, idsAndOrgIdToChildrenMapPair.first, start, end,fhirSearchList);
-		for (BarChartDefinition barChart : barCharts) {
-			for(BarChartItemDefinition barChartItem : barChart.getBarChartItemDefinitions() ) {
-				ArrayList<BarComponentData> barComponents = new ArrayList<BarComponentData>();
-				for(BarComponent barComponent: barChartItem.getBarComponentList()) {
-					String key = barComponent.getFhirPath()+String.join(",",fhirSearchList);
-					String md5 = Utils.getMd5KeyForLineCacheMd5(key, barComponent.getBarChartItemId(), barChartItem.getChartId());
-					Double cacheValueSum = notificationDataSource
-							.getCacheValueSumByDateRangeIndicatorAndMultipleOrgId(start, end,
-									md5, facilityIds);
-					barComponents.add(new BarComponentData(barComponent.getId(), barComponent.getBarChartItemId(),
-							cacheValueSum.toString()));		
-				}
-				barChartItems.add(new BarChartItemDataCollection(barChartItem.getId(), barChart.getId(), barComponents));
+	Date start = Date.valueOf(startDate);
+	Date end = Date.valueOf(endDate);
+	List<String> fhirSearchList = getFhirSearchListByFilters(filters, env);
+	performCachingIfNotPresentForBarChart(barCharts, idsAndOrgIdToChildrenMapPair.first, start, end,fhirSearchList);
+	for (BarChartDefinition barChart : barCharts) {
+		List<BarComponentCategory> barComponentCategory = new ArrayList<>();
+		for(BarChartItemDefinition barChartItem : barChart.getBarChartItemDefinitions() ) {
+			ArrayList<BarComponentData> barComponents = new ArrayList<BarComponentData>();
+			for(BarComponent barComponent: barChartItem.getBarComponentList()) {
+				String key = barComponent.getFhirPath()+String.join(",",fhirSearchList);
+				String md5 = Utils.getMd5KeyForLineCacheMd5WithCategory(key, barComponent.getBarChartItemId(), barChartItem.getChartId(),barChart.getCategoryId());
+				Double cacheValueSum = notificationDataSource
+					.getCacheValueSumByDateRangeIndicatorAndMultipleOrgId(start, end,
+						md5, facilityIds);
+				barComponents.add(new BarComponentData(barComponent.getId(), barComponent.getBarChartItemId(),
+					cacheValueSum.toString()));
 			}
+			barComponentCategory.add(new BarComponentCategory(barChartItem.getId(), barComponents));
 		}
-		return ResponseEntity.ok(barChartItems);
+		barChartItems.add(new BarChartItemDataCollection(barChart.getId(),barChart.getCategoryId(),barComponentCategory));
 	}
-	
+	return ResponseEntity.ok(barChartItems);
+}
 	private void performCachingIfNotPresent(List<IndicatorItem> indicators, List<String> facilityIds, Date startDate, Date endDate, List<String> fhirSearchList) {
 		String filterString = String.join(",", fhirSearchList);
 		logger.warn("**** "+filterString);
@@ -1011,13 +1009,13 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 
 	private void performCachingIfNotPresentForBarChart(List<BarChartDefinition> barCharts, List<String> facilityIds, Date startDate, Date endDate, List<String> fhirSearchList) {
 		String filterString = String.join(",", fhirSearchList);
-		List<String> currentIndicatorMD5List = barCharts.stream().flatMap(barChart -> 
+		List<String> currentIndicatorMD5List = barCharts.stream().flatMap(barChart ->
 			barChart.getBarChartItemDefinitions().stream().flatMap(barItemDefinition ->
 				barItemDefinition.getBarComponentList().stream().map( barComponent ->
-					Utils.getMd5KeyForLineCacheMd5(barComponent.getFhirPath()+filterString, barComponent.getBarChartItemId(), barItemDefinition.getChartId())
-					)
+					Utils.getMd5KeyForLineCacheMd5WithCategory(barComponent.getFhirPath()+filterString, barComponent.getBarChartItemId(), barItemDefinition.getChartId(),barChart.getCategoryId())
 				)
-			).collect(Collectors.toList());
+			)
+		).collect(Collectors.toList());
 
 		List<Date> dates = new ArrayList<>();
 		List<String> presentIndicators = notificationDataSource.getIndicatorsPresent(startDate, endDate);
@@ -1042,11 +1040,11 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			start = Date.valueOf(start.toLocalDate().plusDays(1));
 		}
 		logger.warn(
-				"Bar Chart Cache Cache present days: "+presentDates.toString()
+			"Bar Chart Cache Cache present days: "+presentDates.toString()
 				+"Cache existing indicators: "+existingIndicators.toString()
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
-				);
+		);
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
@@ -1064,7 +1062,6 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		}
 
 	}
-	
 	public ResponseEntity<?> getLineChartByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate, ReportType type,LinkedHashMap<String,String> filters, String env) {
 		notificationDataSource = NotificationDataSource.getInstance();
 		List<LineChartItemCollection> lineChartItemCollections = new ArrayList<>();
@@ -1108,11 +1105,11 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 					String key =lineChartDefinition.getFhirPath()+String.join(",",fhirSearchList);
 					Double cacheValueSum = notificationDataSource
 							.getCacheValueSumByDateRangeIndicatorAndMultipleOrgId(weekDayPair.first, weekDayPair.second,
-								Utils.getMd5KeyForLineCacheMd5(key,lineChartDefinition.getId(),lineChart.getId()), facilityIds);
+								Utils.getMd5KeyForLineCacheMd5WithCategory(key,lineChartDefinition.getId(),lineChart.getId(),lineChart.getCategoryId()), facilityIds);
 					lineChartItems.add(new LineChartItem(lineChartDefinition.getId(),String.valueOf(cacheValueSum), weekDayPair.first.toString(), weekDayPair.second.toString()));
 				}
 			}
-			lineChartItemCollections.add(new LineChartItemCollection(lineChart.getId(), lineChartItems));
+			lineChartItemCollections.add(new LineChartItemCollection(lineChart.getId(),lineChart.getCategoryId(), lineChartItems));
 		}
 		return ResponseEntity.ok(lineChartItemCollections);
 	}
@@ -1121,7 +1118,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		String filterString = String.join(",", fhirSearchList);
 		List<String> currentIndicatorMD5List = lineCharts.stream().flatMap(lineChart ->
 				lineChart.getLineChartItemDefinitions().stream().map(lineDefinition->
-						Utils.getMd5KeyForLineCacheMd5(lineDefinition.getFhirPath()+filterString, lineDefinition.getId(), lineChart.getId())
+						Utils.getMd5KeyForLineCacheMd5WithCategory(lineDefinition.getFhirPath()+filterString, lineDefinition.getId(), lineChart.getId(),lineChart.getCategoryId())
 					)
 				).collect(Collectors.toList());
 
@@ -1170,36 +1167,36 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		}
 	}
 
-	public void cacheDashboardData(List<String> facilities, String start, String end, String env) {
-		List<ScoreCardIndicatorItem> scoreCardIndicatorItemsList = getIndicatorItemListFromFile(env);
-		List<IndicatorItem> indicators = new ArrayList<>();
-		scoreCardIndicatorItemsList.forEach(scoreCardIndicatorItem -> indicators.addAll(scoreCardIndicatorItem.getIndicators()));
-		List<PieChartDefinition> pieChartDefinitions = getPieChartItemDefinitionFromFile(env);
-		List<BarChartDefinition> barCharts = getBarChartItemListFromFile(env);
-		List<LineChart> lineCharts = getLineChartDefinitionsItemListFromFile(env);
-		List<TabularItem> tabularItemList = getTabularItemListFromFile(env);
-		ThreadPoolTaskExecutor executor =  asyncConf.asyncExecutor();
-		HashMap <String,Pair<Long,Long>> orgToTiming = new HashMap();
-		List<List<String>> facilityBatches = Utils.partitionFacilities(facilities, appProperties.getExecutor_max_pool_size());
-		int count = 0;
-		long startTime = System.nanoTime();
-		List<Future<?>> futures = new ArrayList<Future<?>>();
-		for (List<String> facilityBatch : facilityBatches) {
-			count+=1;
-			final int countFinal = count;
-			 Runnable worker = new Runnable() {
-					@Override
-					public void run() {
-					for (String facilityId : facilityBatch) {
-						Date endDate = Date.valueOf(Date.valueOf(end).toLocalDate().plusDays(1));
-						Date startDate = Date.valueOf(start);
-						cacheDashboardData(facilityId, startDate,endDate, indicators, barCharts, tabularItemList, lineCharts, pieChartDefinitions,countFinal,orgToTiming);
-						}
-					}
-				};
-			 executor.submit(worker);
-		}
-	}
+//	public void cacheDashboardData(List<String> facilities, String start, String end, String env) {
+//		List<ScoreCardIndicatorItem> scoreCardIndicatorItemsList = getIndicatorItemListFromFile(env);
+//		List<IndicatorItem> indicators = new ArrayList<>();
+//		scoreCardIndicatorItemsList.forEach(scoreCardIndicatorItem -> indicators.addAll(scoreCardIndicatorItem.getIndicators()));
+//		List<PieChartDefinition> pieChartDefinitions = getPieChartItemDefinitionFromFile(env);
+//		List<BarChartDefinition> barCharts = getBarChartItemListFromFile(env);
+//		List<LineChart> lineCharts = getLineChartDefinitionsItemListFromFile(env);
+//		List<TabularItem> tabularItemList = getTabularItemListFromFile(env);
+//		ThreadPoolTaskExecutor executor =  asyncConf.asyncExecutor();
+//		HashMap <String,Pair<Long,Long>> orgToTiming = new HashMap();
+//		List<List<String>> facilityBatches = Utils.partitionFacilities(facilities, appProperties.getExecutor_max_pool_size());
+//		int count = 0;
+//		long startTime = System.nanoTime();
+//		List<Future<?>> futures = new ArrayList<Future<?>>();
+//		for (List<String> facilityBatch : facilityBatches) {
+//			count+=1;
+//			final int countFinal = count;
+//			 Runnable worker = new Runnable() {
+//					@Override
+//					public void run() {
+//					for (String facilityId : facilityBatch) {
+//						Date endDate = Date.valueOf(Date.valueOf(end).toLocalDate().plusDays(1));
+//						Date startDate = Date.valueOf(start);
+//						cacheDashboardData(facilityId, startDate,endDate, indicators, barCharts, tabularItemList, lineCharts, pieChartDefinitions,countFinal,orgToTiming);
+//						}
+//					}
+//				};
+//			 executor.submit(worker);
+//		}
+//	}
 
 	
 	List<String> getFhirSearchListByFilters(LinkedHashMap<String, String> filters,String env) {
@@ -1222,44 +1219,44 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 
 	
 
-	public void cacheDashboardData(String orgId, Date startDate, Date endDate, List<IndicatorItem> indicators, List<BarChartDefinition> barCharts, List<TabularItem> tabularItems, List<LineChart> lineCharts, List<PieChartDefinition> pieChartDefinitions,int count,HashMap <String,Pair<Long,Long>> orgToTiming ) {
-		notificationDataSource = NotificationDataSource.getInstance();
-		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
-		DashboardModel dashboard = ReportGeneratorFactory.INSTANCE.reportGenerator().getOverallDataToCache(
-			fhirClientProvider,
-			orgId,
-			new DateRange(startDate.toString(), endDate.toString()),
-			indicators,
-			lineCharts,
-			barCharts,
-			tabularItems,
-			pieChartDefinitions,
-			Collections.emptyList()
-		);
-//		ThreadPoolTaskExecutor cacheExecutor =  asyncConf.cacheExecutor();
-
-//		Runnable worker = new Runnable() {
-//			@Override
-//			public void run() {
-				Date currentDate = startDate;
-				Double diff = 0.0;
-				while(!currentDate.equals(endDate)) {
-					Long start = System.nanoTime();
-					cachingService.cacheData(orgId, currentDate, indicators,count,dashboard.getScoreCardItemList(),"");
-					cachingService.cacheDataForBarChart(orgId, currentDate, barCharts,count,dashboard.getBarChartItemCollectionList(),"");
-					cachingService.cacheDataLineChart(orgId, currentDate, lineCharts,count,dashboard.getLineChartItemCollections(),"");
-					cachingService.cachePieChartData(orgId, currentDate, pieChartDefinitions,count,dashboard.getPieChartItemList(),"");
-					cachingService.cacheTabularData(orgId, currentDate, tabularItems,count,dashboard.getTabularItemList(),"");
-					currentDate = Date.valueOf(currentDate.toLocalDate().plusDays(1));
-					Long end = System.nanoTime();
-					diff+= (end-start)/1000000000.0;
-				}
-			   logger.warn("ALL Dates for org ****** "+orgId+" "+String.valueOf(diff));
-//			}
-//		};
-//		cacheExecutor.submit(worker);		
-	}
-	
+//	public void cacheDashboardData(String orgId, Date startDate, Date endDate, List<IndicatorItem> indicators, List<BarChartDefinition> barCharts, List<TabularItem> tabularItems, List<LineChart> lineCharts, List<PieChartDefinition> pieChartDefinitions,int count,HashMap <String,Pair<Long,Long>> orgToTiming ) {
+//		notificationDataSource = NotificationDataSource.getInstance();
+//		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
+//		DashboardModel dashboard = ReportGeneratorFactory.INSTANCE.reportGenerator().getOverallDataToCache(
+//			fhirClientProvider,
+//			orgId,
+//			new DateRange(startDate.toString(), endDate.toString()),
+//			indicators,
+//			lineCharts,
+//			barCharts,
+//			tabularItems,
+//			pieChartDefinitions,
+//			Collections.emptyList()
+//		);
+////		ThreadPoolTaskExecutor cacheExecutor =  asyncConf.cacheExecutor();
+//
+////		Runnable worker = new Runnable() {
+////			@Override
+////			public void run() {
+//				Date currentDate = startDate;
+//				Double diff = 0.0;
+//				while(!currentDate.equals(endDate)) {
+//					Long start = System.nanoTime();
+//					cachingService.cacheData(orgId, currentDate, indicators,count,dashboard.getScoreCardItemList(),"");
+//					cachingService.cacheDataForBarChart(orgId, currentDate, barCharts,count,dashboard.getBarChartItemCollectionList(),"");
+//					cachingService.cacheDataLineChart(orgId, currentDate, lineCharts,count,dashboard.getLineChartItemCollections(),"");
+//					cachingService.cachePieChartData(orgId, currentDate, pieChartDefinitions,count,dashboard.getPieChartItemList(),"");
+//					cachingService.cacheTabularData(orgId, currentDate, tabularItems,count,dashboard.getTabularItemList(),"");
+//					currentDate = Date.valueOf(currentDate.toLocalDate().plusDays(1));
+//					Long end = System.nanoTime();
+//					diff+= (end-start)/1000000000.0;
+//				}
+//			   logger.warn("ALL Dates for org ****** "+orgId+" "+String.valueOf(diff));
+////			}
+////		};
+////		cacheExecutor.submit(worker);
+//	}
+//
 	
 	
 //	@Scheduled(fixedDelay = 24 * DELAY, initialDelay = DELAY)
