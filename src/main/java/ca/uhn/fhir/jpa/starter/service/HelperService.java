@@ -1167,36 +1167,36 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		}
 	}
 
-//	public void cacheDashboardData(List<String> facilities, String start, String end, String env) {
-//		List<ScoreCardIndicatorItem> scoreCardIndicatorItemsList = getIndicatorItemListFromFile(env);
-//		List<IndicatorItem> indicators = new ArrayList<>();
-//		scoreCardIndicatorItemsList.forEach(scoreCardIndicatorItem -> indicators.addAll(scoreCardIndicatorItem.getIndicators()));
-//		List<PieChartDefinition> pieChartDefinitions = getPieChartItemDefinitionFromFile(env);
-//		List<BarChartDefinition> barCharts = getBarChartItemListFromFile(env);
-//		List<LineChart> lineCharts = getLineChartDefinitionsItemListFromFile(env);
-//		List<TabularItem> tabularItemList = getTabularItemListFromFile(env);
-//		ThreadPoolTaskExecutor executor =  asyncConf.asyncExecutor();
-//		HashMap <String,Pair<Long,Long>> orgToTiming = new HashMap();
-//		List<List<String>> facilityBatches = Utils.partitionFacilities(facilities, appProperties.getExecutor_max_pool_size());
-//		int count = 0;
-//		long startTime = System.nanoTime();
-//		List<Future<?>> futures = new ArrayList<Future<?>>();
-//		for (List<String> facilityBatch : facilityBatches) {
-//			count+=1;
-//			final int countFinal = count;
-//			 Runnable worker = new Runnable() {
-//					@Override
-//					public void run() {
-//					for (String facilityId : facilityBatch) {
-//						Date endDate = Date.valueOf(Date.valueOf(end).toLocalDate().plusDays(1));
-//						Date startDate = Date.valueOf(start);
-//						cacheDashboardData(facilityId, startDate,endDate, indicators, barCharts, tabularItemList, lineCharts, pieChartDefinitions,countFinal,orgToTiming);
-//						}
-//					}
-//				};
-//			 executor.submit(worker);
-//		}
-//	}
+	public void cacheDashboardData(List<String> facilities, String start, String end, String env) {
+		List<ScoreCardIndicatorItem> scoreCardIndicatorItemsList = getIndicatorItemListFromFile(env);
+		List<IndicatorItem> indicators = new ArrayList<>();
+		scoreCardIndicatorItemsList.forEach(scoreCardIndicatorItem -> indicators.addAll(scoreCardIndicatorItem.getIndicators()));
+		List<PieChartDefinition> pieChartDefinitions = getPieChartItemDefinitionFromFile(env);
+		List<BarChartDefinition> barCharts = getBarChartItemListFromFile(env);
+		List<LineChart> lineCharts = getLineChartDefinitionsItemListFromFile(env);
+		List<TabularItem> tabularItemList = getTabularItemListFromFile(env);
+		ThreadPoolTaskExecutor executor =  asyncConf.asyncExecutor();
+		HashMap <String,Pair<Long,Long>> orgToTiming = new HashMap();
+		List<List<String>> facilityBatches = Utils.partitionFacilities(facilities, appProperties.getExecutor_max_pool_size());
+		int count = 0;
+		long startTime = System.nanoTime();
+		List<Future<?>> futures = new ArrayList<Future<?>>();
+		for (List<String> facilityBatch : facilityBatches) {
+			count+=1;
+			final int countFinal = count;
+			 Runnable worker = new Runnable() {
+					@Override
+					public void run() {
+					for (String facilityId : facilityBatch) {
+						Date endDate = Date.valueOf(Date.valueOf(end).toLocalDate().plusDays(1));
+						Date startDate = Date.valueOf(start);
+						cacheDashboardData(facilityId, startDate,endDate, indicators, barCharts, tabularItemList, lineCharts, pieChartDefinitions,countFinal,orgToTiming);
+						}
+					}
+				};
+			 executor.submit(worker);
+		}
+	}
 
 	
 	List<String> getFhirSearchListByFilters(LinkedHashMap<String, String> filters,String env) {
@@ -1219,44 +1219,44 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 
 	
 
-//	public void cacheDashboardData(String orgId, Date startDate, Date endDate, List<IndicatorItem> indicators, List<BarChartDefinition> barCharts, List<TabularItem> tabularItems, List<LineChart> lineCharts, List<PieChartDefinition> pieChartDefinitions,int count,HashMap <String,Pair<Long,Long>> orgToTiming ) {
-//		notificationDataSource = NotificationDataSource.getInstance();
-//		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
-//		DashboardModel dashboard = ReportGeneratorFactory.INSTANCE.reportGenerator().getOverallDataToCache(
-//			fhirClientProvider,
-//			orgId,
-//			new DateRange(startDate.toString(), endDate.toString()),
-//			indicators,
-//			lineCharts,
-//			barCharts,
-//			tabularItems,
-//			pieChartDefinitions,
-//			Collections.emptyList()
-//		);
-////		ThreadPoolTaskExecutor cacheExecutor =  asyncConf.cacheExecutor();
-//
-////		Runnable worker = new Runnable() {
-////			@Override
-////			public void run() {
-//				Date currentDate = startDate;
-//				Double diff = 0.0;
-//				while(!currentDate.equals(endDate)) {
-//					Long start = System.nanoTime();
-//					cachingService.cacheData(orgId, currentDate, indicators,count,dashboard.getScoreCardItemList(),"");
-//					cachingService.cacheDataForBarChart(orgId, currentDate, barCharts,count,dashboard.getBarChartItemCollectionList(),"");
-//					cachingService.cacheDataLineChart(orgId, currentDate, lineCharts,count,dashboard.getLineChartItemCollections(),"");
-//					cachingService.cachePieChartData(orgId, currentDate, pieChartDefinitions,count,dashboard.getPieChartItemList(),"");
-//					cachingService.cacheTabularData(orgId, currentDate, tabularItems,count,dashboard.getTabularItemList(),"");
-//					currentDate = Date.valueOf(currentDate.toLocalDate().plusDays(1));
-//					Long end = System.nanoTime();
-//					diff+= (end-start)/1000000000.0;
-//				}
-//			   logger.warn("ALL Dates for org ****** "+orgId+" "+String.valueOf(diff));
-////			}
-////		};
-////		cacheExecutor.submit(worker);
-//	}
-//
+	public void cacheDashboardData(String orgId, Date startDate, Date endDate, List<IndicatorItem> indicators, List<BarChartDefinition> barCharts, List<TabularItem> tabularItems, List<LineChart> lineCharts, List<PieChartDefinition> pieChartDefinitions,int count,HashMap <String,Pair<Long,Long>> orgToTiming ) {
+		notificationDataSource = NotificationDataSource.getInstance();
+		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
+		DashboardModel dashboard = ReportGeneratorFactory.INSTANCE.reportGenerator().getOverallDataToCache(
+			fhirClientProvider,
+			orgId,
+			new DateRange(startDate.toString(), endDate.toString()),
+			indicators,
+			lineCharts,
+			barCharts,
+			tabularItems,
+			pieChartDefinitions,
+			Collections.emptyList()
+		);
+//		ThreadPoolTaskExecutor cacheExecutor =  asyncConf.cacheExecutor();
+
+//		Runnable worker = new Runnable() {
+//			@Override
+//			public void run() {
+				Date currentDate = startDate;
+				Double diff = 0.0;
+				while(!currentDate.equals(endDate)) {
+					Long start = System.nanoTime();
+					cachingService.cacheData(orgId, currentDate, indicators,count,dashboard.getScoreCardItemList(),"");
+					cachingService.cacheDataForBarChart(orgId, currentDate, barCharts,count,dashboard.getBarChartItemCollectionList(),"");
+					cachingService.cacheDataLineChart(orgId, currentDate, lineCharts,count,dashboard.getLineChartItemCollections(),"");
+					cachingService.cachePieChartData(orgId, currentDate, pieChartDefinitions,count,dashboard.getPieChartItemList(),"");
+					cachingService.cacheTabularData(orgId, currentDate, tabularItems,count,dashboard.getTabularItemList(),"");
+					currentDate = Date.valueOf(currentDate.toLocalDate().plusDays(1));
+					Long end = System.nanoTime();
+					diff+= (end-start)/1000000000.0;
+				}
+			   logger.warn("ALL Dates for org ****** "+orgId+" "+String.valueOf(diff));
+//			}
+//		};
+//		cacheExecutor.submit(worker);
+	}
+
 	
 	
 //	@Scheduled(fixedDelay = 24 * DELAY, initialDelay = DELAY)

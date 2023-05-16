@@ -1,11 +1,9 @@
 package ca.uhn.fhir.jpa.starter.service;
 
 import ca.uhn.fhir.jpa.starter.AppProperties;
-import ca.uhn.fhir.jpa.starter.DashboardConfigContainer;
 import ca.uhn.fhir.jpa.starter.DashboardEnvironmentConfig;
 import ca.uhn.fhir.jpa.starter.model.CacheEntity;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
-import com.iprd.fhir.utils.DateUtilityHelper;
 import com.iprd.fhir.utils.Operation;
 import com.iprd.fhir.utils.OperationHelper;
 import com.iprd.fhir.utils.Utils;
@@ -20,8 +18,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
@@ -32,7 +28,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Future;
 
 @Import(AppProperties.class)
 @Service
@@ -101,68 +96,70 @@ public class CachingService {
 		   double diff = (end-start);
 //		   logger.warn("CACHE DATA "+String.valueOf(diff));
 	}
-	
-//	public void cacheDataForBarChart(String orgId, Date startDate, List<BarChartDefinition> barCharts,int count,Map<String, List<BarChartItemDataCollection>> map,String filterString) {
-//		notificationDataSource = NotificationDataSource.getInstance();
-//		LinkedHashMap<String, String> mapOfIdToMd5 = new LinkedHashMap<>();
-//		for (BarChartDefinition barChart : barCharts) {
-//			for(BarChartItemDefinition barChartItem: barChart.getBarChartItemDefinitions()) {
-//				for(BarComponent barComponent:barChartItem.getBarComponentList()) {
-//					mapOfIdToMd5.put(String.valueOf(barChart.getId())+" "+String.valueOf(barChartItem.getId())+" "+String.valueOf(barComponent.getId()),Utils.getMd5KeyForLineCacheMd5((barComponent.getFhirPath()+filterString), barComponent.getBarChartItemId(), barChart.getId()));
-//				}
-//			}
-//
-//		}
-//
-//			List<BarChartItemDataCollection> data = map.get(startDate.toLocalDate().toString());
-//			final Date date = (Date) startDate.clone();
-//			if (data != null) {
-//				ArrayList<CacheEntity> cacheEntitiesForInsert = new ArrayList<CacheEntity>();
-//				ArrayList<CacheEntity> cacheEntitiesForUpdate = new ArrayList<CacheEntity>();
-//			    data.forEach(barChartItemCollection -> {
-//			        barChartItemCollection.getBarComponentData().stream().forEach(barComponent -> {
-//			            OperationHelper.doWithRetry(MAX_RETRY, new Operation() {
-//			                @Override
-//			                public void doIt() {
-//			                    List<CacheEntity> cacheEntities = notificationDataSource.getCacheByDateIndicatorAndOrgId(date, mapOfIdToMd5.get(String.valueOf(barChartItemCollection.getChartId()) + " " + String.valueOf(barChartItemCollection.getId()) + " " + String.valueOf(barComponent.getId())), orgId);
-//			                    if (cacheEntities.isEmpty()) {
-//			                        CacheEntity cacheEntityForPatient = new CacheEntity(orgId, mapOfIdToMd5.get(String.valueOf(barChartItemCollection.getChartId()) + " " + String.valueOf(barChartItemCollection.getId()) + " " + String.valueOf(barComponent.getId())), date, Double.valueOf(barComponent.getValue()), Date.valueOf(LocalDate.now()));
-//			                        cacheEntitiesForInsert.add(cacheEntityForPatient);
-//
-//			                    } else {
-//			                        CacheEntity cacheEntityForPatient = cacheEntities.get(0);
-//			                        cacheEntityForPatient.setValue(Double.valueOf(barComponent.getValue()));
-//			                        cacheEntitiesForUpdate.add(cacheEntityForPatient);
-//			                    }
-//			                }
-//			            });
-//			        });
-//			    });
-//		    	notificationDataSource.insertObjects(cacheEntitiesForInsert);
-//		    	notificationDataSource.updateObjects(cacheEntitiesForUpdate);
-//			} else {
-//				ArrayList<CacheEntity> cacheEntitiesForInsert = new ArrayList<CacheEntity>();
-//			    barCharts.forEach(chart -> {
-//			        chart.getBarChartItemDefinitions().forEach(itemDef -> {
-//			            itemDef.getBarComponentList().forEach(barComponent -> {
-//			                OperationHelper.doWithRetry(MAX_RETRY, new Operation() {
-//			                    @Override
-//			                    public void doIt() {
-//			                    	List<CacheEntity> cacheEntities = notificationDataSource.getCacheByDateIndicatorAndOrgId(date, mapOfIdToMd5.get(String.valueOf(chart.getId()) + " " + String.valueOf(itemDef.getId()) + " " + String.valueOf(barComponent.getId())), orgId);
-//				                    if (cacheEntities.isEmpty()) {
-//				                        CacheEntity cacheEntityForPatient = new CacheEntity(orgId, mapOfIdToMd5.get(String.valueOf(chart.getId()) + " " + String.valueOf(itemDef.getId()) + " " + String.valueOf(barComponent.getId())), date, Double.valueOf(0), Date.valueOf(LocalDate.now()));
-//				                        cacheEntitiesForInsert.add(cacheEntityForPatient);
-//				                    }
-//			                    }
-//			                });
-//			            });
-//			        });
-//			    });
-//                notificationDataSource.insertObjects(cacheEntitiesForInsert);
-//			}
-//
-//	}
-	
+
+	public void cacheDataForBarChart(String orgId, Date startDate, List<BarChartDefinition> barCharts,int count,Map<String, List<BarChartItemDataCollection>> map,String filterString) {
+		notificationDataSource = NotificationDataSource.getInstance();
+		LinkedHashMap<String, String> mapOfIdToMd5 = new LinkedHashMap<>();
+		for (BarChartDefinition barChart : barCharts) {
+			for(BarChartItemDefinition barChartItem: barChart.getBarChartItemDefinitions()) {
+				for(BarComponent barComponent:barChartItem.getBarComponentList()) {
+					mapOfIdToMd5.put(String.valueOf(barChart.getId())+" "+String.valueOf(barChartItem.getId())+" "+String.valueOf(barComponent.getId()),Utils.getMd5KeyForLineCacheMd5WithCategory((barComponent.getFhirPath()+filterString), barComponent.getBarChartItemId(), barChart.getId(),barChart.getCategoryId()));
+				}
+			}
+
+		}
+
+			List<BarChartItemDataCollection> data = map.get(startDate.toLocalDate().toString());
+			final Date date = (Date) startDate.clone();
+			if (data != null) {
+				ArrayList<CacheEntity> cacheEntitiesForInsert = new ArrayList<CacheEntity>();
+				ArrayList<CacheEntity> cacheEntitiesForUpdate = new ArrayList<CacheEntity>();
+			    data.forEach(barChartItemCollection -> {
+			        barChartItemCollection.getData().forEach(barComponentCategory -> {
+						  barComponentCategory.getBarComponentData().stream().forEach(barComponent -> {
+							  OperationHelper.doWithRetry(MAX_RETRY, new Operation() {
+								  @Override
+								  public void doIt() {
+									  List<CacheEntity> cacheEntities = notificationDataSource.getCacheByDateIndicatorAndOrgId(date, mapOfIdToMd5.get(String.valueOf(barChartItemCollection.getChartId()) + " " + String.valueOf(barComponentCategory.getId()) + " " + String.valueOf(barComponent.getId())), orgId);
+									  if (cacheEntities.isEmpty()) {
+										  CacheEntity cacheEntityForPatient = new CacheEntity(orgId, mapOfIdToMd5.get(String.valueOf(barChartItemCollection.getChartId()) + " " + String.valueOf(barComponentCategory.getId()) + " " + String.valueOf(barComponent.getId())), date, Double.valueOf(barComponent.getValue()), Date.valueOf(LocalDate.now()));
+										  cacheEntitiesForInsert.add(cacheEntityForPatient);
+
+									  } else {
+										  CacheEntity cacheEntityForPatient = cacheEntities.get(0);
+										  cacheEntityForPatient.setValue(Double.valueOf(barComponent.getValue()));
+										  cacheEntitiesForUpdate.add(cacheEntityForPatient);
+									  }
+								  }
+							  });
+						  });
+					  });
+			    });
+		    	notificationDataSource.insertObjects(cacheEntitiesForInsert);
+		    	notificationDataSource.updateObjects(cacheEntitiesForUpdate);
+			} else {
+				ArrayList<CacheEntity> cacheEntitiesForInsert = new ArrayList<CacheEntity>();
+			    barCharts.forEach(chart -> {
+			        chart.getBarChartItemDefinitions().forEach(itemDef -> {
+			            itemDef.getBarComponentList().forEach(barComponent -> {
+			                OperationHelper.doWithRetry(MAX_RETRY, new Operation() {
+			                    @Override
+			                    public void doIt() {
+			                    	List<CacheEntity> cacheEntities = notificationDataSource.getCacheByDateIndicatorAndOrgId(date, mapOfIdToMd5.get(String.valueOf(chart.getId()) + " " + String.valueOf(itemDef.getId()) + " " + String.valueOf(barComponent.getId())), orgId);
+				                    if (cacheEntities.isEmpty()) {
+				                        CacheEntity cacheEntityForPatient = new CacheEntity(orgId, mapOfIdToMd5.get(String.valueOf(chart.getId()) + " " + String.valueOf(itemDef.getId()) + " " + String.valueOf(barComponent.getId())), date, Double.valueOf(0), Date.valueOf(LocalDate.now()));
+				                        cacheEntitiesForInsert.add(cacheEntityForPatient);
+				                    }
+			                    }
+			                });
+			            });
+			        });
+			    });
+                notificationDataSource.insertObjects(cacheEntitiesForInsert);
+			}
+
+	}
+
 	public void cacheTabularData(String orgId, Date startDate, List<TabularItem> indicators,int count,Map<String, List<ScoreCardItem>> map,String filterString) {
 
 		notificationDataSource = NotificationDataSource.getInstance();
@@ -212,54 +209,62 @@ public class CachingService {
 
 	}
 
-//	public void cachePieChartData(String orgId, Date startDate, List<PieChartDefinition> pieChartDefinitions,int count,Map<String, List<PieChartItem>> map,String filterString){
-//
-//		notificationDataSource = NotificationDataSource.getInstance();
-//		LinkedHashMap<String, String> mapOfIdToMd5 = new LinkedHashMap<>();
-//		for(PieChartDefinition pieChartDefinition : pieChartDefinitions){
-//			mapOfIdToMd5.put(String.valueOf(pieChartDefinition.getId()),Utils.md5Bytes((pieChartDefinition.getFhirPath()+filterString).getBytes(StandardCharsets.UTF_8)));
-//		}
-//
-//		List<PieChartItem> data = map.get(startDate.toLocalDate().toString());
-//		final Date date = (Date) startDate.clone();
-//		if(data!=null) {
-//			ArrayList<CacheEntity> cacheEntitiesForInsert = new ArrayList<CacheEntity>();
-//			ArrayList<CacheEntity> cacheEntitiesForUpdate = new ArrayList<CacheEntity>();
-//			 data.forEach(item -> {
-//				OperationHelper.doWithRetry(MAX_RETRY, new Operation() {
-//				    @Override public void doIt() {
-//				List<CacheEntity> cacheEntities = notificationDataSource.getCacheByDateIndicatorAndOrgId(date, mapOfIdToMd5.get(String.valueOf(item.getId())), item.getOrgId());
-//				if(cacheEntities.isEmpty()){
-//					CacheEntity cacheEntity = new CacheEntity(item.getOrgId(), mapOfIdToMd5.get(String.valueOf(item.getId())), date, Double.valueOf(item.getValue()),Date.valueOf(LocalDate.now()));
-//					cacheEntitiesForInsert.add(cacheEntity);
-//
-//				} else {
-//					CacheEntity cacheEntity = cacheEntities.get(0);
-//					cacheEntity.setValue(Double.valueOf(item.getValue()));
-//					cacheEntitiesForUpdate.add(cacheEntity);
-//				}
-//				    }
-//				});
-//			});
-//			 notificationDataSource.insertObjects(cacheEntitiesForInsert);
-//			 notificationDataSource.updateObjects(cacheEntitiesForUpdate);
-//		}
-//		else {
-//			ArrayList<CacheEntity> cacheEntitiesForInsert = new ArrayList<CacheEntity>();
-//			pieChartDefinitions.forEach(chart -> {
-//				OperationHelper.doWithRetry(MAX_RETRY, new Operation() {
-//				    @Override public void doIt() {
-//				    	List<CacheEntity> cacheEntities = notificationDataSource.getCacheByDateIndicatorAndOrgId(date, mapOfIdToMd5.get(String.valueOf(chart.getId())), orgId);
-//						if(cacheEntities.isEmpty()){
-//							CacheEntity cacheEntity = new CacheEntity(orgId, mapOfIdToMd5.get(String.valueOf(chart.getId())), date, Double.valueOf(0),Date.valueOf(LocalDate.now()));
-//							cacheEntitiesForInsert.add(cacheEntity);
-//						}
-//				    }
-//				});
-//			});
-//            notificationDataSource.insertObjects(cacheEntitiesForInsert);
-//		}
-//	}
+	public void cachePieChartData(String orgId, Date startDate, List<PieChartDefinition> pieChartDefinitions,int count,Map<String, List<PieChartItemDataCollection>> map,String filterString){
+
+		notificationDataSource = NotificationDataSource.getInstance();
+		LinkedHashMap<String, String> mapOfIdToMd5 = new LinkedHashMap<>();
+
+		for(PieChartDefinition pieChartDefinition : pieChartDefinitions) {
+			for (PieChartCategoryDefinition pieChartItem : pieChartDefinition.getItem()) {
+				mapOfIdToMd5.put(String.valueOf(pieChartItem.getId()) + pieChartDefinition.getCategoryId(), Utils.md5Bytes((pieChartItem.getFhirPath() + filterString + pieChartDefinition.getCategoryId()).getBytes(StandardCharsets.UTF_8)));
+			}
+		}
+
+		List<PieChartItemDataCollection> data = map.get(startDate.toLocalDate().toString());
+		final Date date = (Date) startDate.clone();
+		if(data!=null) {
+			ArrayList<CacheEntity> cacheEntitiesForInsert = new ArrayList<CacheEntity>();
+			ArrayList<CacheEntity> cacheEntitiesForUpdate = new ArrayList<CacheEntity>();
+			 data.forEach(item -> {
+					 item.getData().forEach(pieChartItem -> {
+						 OperationHelper.doWithRetry(MAX_RETRY, new Operation() {
+							 @Override
+							 public void doIt() {
+								 List<CacheEntity> cacheEntities = notificationDataSource.getCacheByDateIndicatorAndOrgId(date, mapOfIdToMd5.get(String.valueOf(pieChartItem.getId()) + item.getCategoryId()), pieChartItem.getOrgId());
+								 if (cacheEntities.isEmpty()) {
+									 CacheEntity cacheEntity = new CacheEntity(pieChartItem.getOrgId(), mapOfIdToMd5.get(String.valueOf(pieChartItem.getId()) + item.getCategoryId()), date, Double.valueOf(pieChartItem.getValue()), Date.valueOf(LocalDate.now()));
+									 cacheEntitiesForInsert.add(cacheEntity);
+
+								 } else {
+									 CacheEntity cacheEntity = cacheEntities.get(0);
+									 cacheEntity.setValue(Double.valueOf(pieChartItem.getValue()));
+									 cacheEntitiesForUpdate.add(cacheEntity);
+								 }
+							 }
+						 });
+					 });
+				 });
+			 notificationDataSource.insertObjects(cacheEntitiesForInsert);
+			 notificationDataSource.updateObjects(cacheEntitiesForUpdate);
+		}
+		else {
+			ArrayList<CacheEntity> cacheEntitiesForInsert = new ArrayList<CacheEntity>();
+			pieChartDefinitions.forEach(pieChartDefinition -> {
+				pieChartDefinition.getItem().forEach( item -> {
+				OperationHelper.doWithRetry(MAX_RETRY, new Operation() {
+				    @Override public void doIt() {
+				    	List<CacheEntity> cacheEntities = notificationDataSource.getCacheByDateIndicatorAndOrgId(date, mapOfIdToMd5.get(String.valueOf(item.getId()) + pieChartDefinition.getCategoryId()), orgId);
+						if(cacheEntities.isEmpty()){
+							CacheEntity cacheEntity = new CacheEntity(orgId, mapOfIdToMd5.get(String.valueOf(item.getId()) + pieChartDefinition.getCategoryId()), date, Double.valueOf(0),Date.valueOf(LocalDate.now()));
+							cacheEntitiesForInsert.add(cacheEntity);
+						}
+				    }
+				});
+			});
+				});
+            notificationDataSource.insertObjects(cacheEntitiesForInsert);
+		}
+	}
 
 	public void cacheDataLineChart(String orgId, Date startDate, List<LineChart> lineCharts,int count,Map<String, List<LineChartItemCollection>> map,String filterString) {
 
@@ -267,7 +272,7 @@ public class CachingService {
 		LinkedHashMap<String, String> mapOfIdToMd5 = new LinkedHashMap<>();
 		for (LineChart lineChart : lineCharts) {
 			for(LineChartItemDefinition lineDefinition: lineChart.getLineChartItemDefinitions()) {
-				mapOfIdToMd5.put(String.valueOf(lineChart.getId())+" "+String.valueOf(lineDefinition.getId()), Utils.getMd5KeyForLineCacheMd5(lineDefinition.getFhirPath()+filterString, lineDefinition.getId(), lineChart.getId()));	
+				mapOfIdToMd5.put(String.valueOf(lineChart.getId())+" "+String.valueOf(lineDefinition.getId()), Utils.getMd5KeyForLineCacheMd5WithCategory(lineDefinition.getFhirPath()+filterString, lineDefinition.getId(), lineChart.getId(),lineChart.getCategoryId()));
 			}
 		}
 
