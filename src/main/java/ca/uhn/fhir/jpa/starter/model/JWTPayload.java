@@ -3,12 +3,13 @@ package ca.uhn.fhir.jpa.starter.model;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+@JsonIgnoreProperties("aud")
 public class JWTPayload {
 	private float exp;
 	private float iat;
 	private String jti;
 	private String iss;
-	private String aud;
 	private String sub;
 	private String typ;
 	private String azp;
@@ -26,7 +27,16 @@ public class JWTPayload {
 	private String given_name;
 	private String family_name;
 	private String email;
+	private List<String> clientRoles = new ArrayList<>();;
 
+	public  List<String> getClientRoles() {
+		return clientRoles;
+	}
+
+	public void setClientRole( List<String> clientRoles) {
+		this.clientRoles = clientRoles;
+	}
+	
 	public float getExp() {
 		return exp;
 	}
@@ -57,14 +67,6 @@ public class JWTPayload {
 
 	public void setIss(String iss) {
 		this.iss = iss;
-	}
-
-	public String getAud() {
-		return aud;
-	}
-
-	public void setAud(String aud) {
-		this.aud = aud;
 	}
 
 	public String getSub() {

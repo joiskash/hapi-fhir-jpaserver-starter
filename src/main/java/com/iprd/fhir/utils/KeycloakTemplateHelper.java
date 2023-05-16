@@ -43,19 +43,19 @@ public class KeycloakTemplateHelper {
 		return wardGroupRep;
 	}
 
-	public static GroupRepresentation facilityGroup(String name , String parentId, String fhirOrganizationId, String fhirLocationId, String facilityLevel, String ownership, String facilityUID, String facilityCode,String argusoftId) {
+	public static GroupRepresentation facilityGroup(String name, String parentId, String fhirOrganizationId, String fhirLocationId, String facilityLevel, String ownership, String facilityUID, String facilityCode, String argusoftId) {
 		GroupRepresentation facilityGroupRep = new GroupRepresentation();
 		facilityGroupRep.setName(facilityUID);
 		facilityGroupRep.singleAttribute("type", FACILITY);
-		facilityGroupRep.singleAttribute("facility_name",name);
+		facilityGroupRep.singleAttribute("facility_name", name);
 		facilityGroupRep.singleAttribute("parent", parentId);
-		facilityGroupRep.singleAttribute("facility_level",facilityLevel);
-		facilityGroupRep.singleAttribute("organization_id",fhirOrganizationId);
-		facilityGroupRep.singleAttribute("location_id",fhirLocationId);
-		facilityGroupRep.singleAttribute("ownership",ownership);
-		facilityGroupRep.singleAttribute("facility_code",facilityCode);
-		facilityGroupRep.singleAttribute("facilityUID",facilityUID);
-		facilityGroupRep.singleAttribute("argusoft_identifier", argusoftId);	
+		facilityGroupRep.singleAttribute("facility_level", facilityLevel);
+		facilityGroupRep.singleAttribute("organization_id", fhirOrganizationId);
+		facilityGroupRep.singleAttribute("location_id", fhirLocationId);
+		facilityGroupRep.singleAttribute("ownership", ownership);
+		facilityGroupRep.singleAttribute("facility_code", facilityCode);
+		facilityGroupRep.singleAttribute("facilityUID", facilityUID);
+		facilityGroupRep.singleAttribute("argusoft_identifier", argusoftId);
 		return facilityGroupRep;
 	}
 	
@@ -64,6 +64,7 @@ public class KeycloakTemplateHelper {
 		CredentialRepresentation credential = new CredentialRepresentation();
 		credential.setType(CredentialRepresentation.PASSWORD);
 		credential.setValue(password);
+		credential.setTemporary(true);
 		user.setCredentials(Arrays.asList(credential));
 		user.setGroups(Arrays.asList(stateGroup, lgaGroup, wardGroup, facilityGroup));
 		user.setUsername(userName);
@@ -88,6 +89,7 @@ public class KeycloakTemplateHelper {
 		CredentialRepresentation credential = new CredentialRepresentation();
 		credential.setType(CredentialRepresentation.PASSWORD);
 		credential.setValue(password);
+		credential.setTemporary(true);
 		user.setCredentials(Arrays.asList(credential));
 		user.setGroups(Arrays.asList(organization));
 		user.setUsername(userName);

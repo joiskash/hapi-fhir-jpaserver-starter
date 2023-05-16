@@ -12,6 +12,7 @@ import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 import ca.uhn.fhir.rest.gclient.ICriterion;
 import ca.uhn.fhir.rest.gclient.IQuery;
 
+import ca.uhn.fhir.rest.gclient.TokenClientParam;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.gson.Gson;
 import com.iprd.fhir.utils.*;
@@ -46,6 +47,7 @@ import javax.ws.rs.core.Response;
 import com.iprd.report.model.definition.BarComponent;
 import com.iprd.report.model.definition.LineChart;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.hibernate.engine.jdbc.ClobProxy;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -166,72 +168,118 @@ public class HelperService {
 		int iteration = 0;
 		String stateId = "", lgaId = "", wardId = "", facilityOrganizationId = "", facilityLocationId = "";
 		String stateGroupId = "", lgaGroupId = "", wardGroupId = "", facilityGroupId = "";
-
 		while ((singleLine = bufferedReader.readLine()) != null) {
 			if (iteration == 0) { //skip header of CSV file
 				iteration++;
 				continue;
 			}
+			iteration ++;
 			String[] csvData = singleLine.split(",");
-			//State, LGA, Ward, FacilityUID, FacilityCode, CountryCode, PhoneNumber, FacilityName, FacilityLevel, Ownership, Argusoft Identifier
-			if (!csvData[3].isEmpty()) {
-				if (Validation.validateClinicAndStateCsvLine(csvData)) {
-					if (!states.contains(csvData[0])) {
-						Organization state = FhirResourceTemplateHelper.state(csvData[0]);
-						stateId = createResource(state, Organization.class, Organization.NAME.matchesExactly().value(state.getName()));
-						states.add(state.getName());
-						GroupRepresentation stateGroupRep = KeycloakTemplateHelper.stateGroup(state.getName(), stateId);
-						stateGroupId = createGroup(stateGroupRep);
-						updateResource(stateGroupId, stateId, Organization.class);
-					}
+			//State(0), LGA(1), Ward(2), FacilityUID(3), FacilityCode(4), CountryCode(5), PhoneNumber(6), FacilityName(7), FacilityLevel(8), Ownership(9), Argusoft Identifier(10)
+			String stateName = csvData[0];
+			String lgaName = csvData[1];
+			String wardName = csvData[2];
+			String facilityUID = csvData[3];
+			String facilityCode = csvData[4];
+			String countryCode = csvData[5];
+			String phoneNumber = csvData[6];
+			String facilityName = csvData[7];
+			String type = csvData[8];
+			String ownership = csvData[9];
+			String argusoftIdentifier = csvData[10];
 
-					if (!lgas.contains(csvData[1])) {
-						Organization lga = FhirResourceTemplateHelper.lga(csvData[1], csvData[0], stateId);
-						lgaId = createResource(lga, Organization.class, Organization.NAME.matchesExactly().value(lga.getName()));
-						lgas.add(lga.getName());
-						GroupRepresentation lgaGroupRep = KeycloakTemplateHelper.lgaGroup(lga.getName(), stateGroupId, lgaId);
-						lgaGroupId = createGroup(lgaGroupRep);
-						updateResource(lgaGroupId, lgaId, Organization.class);
-					}
+			if (facilityUID.isEmpty()) {
+				invalidClinics.add("Invalid facilityUID: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+				continue;
+			}
 
-					if (!wards.contains(csvData[2])) {
-						Organization ward = FhirResourceTemplateHelper.ward(csvData[0], csvData[1], csvData[2], lgaId);
-						wardId = createResource(ward, Organization.class, Organization.NAME.matchesExactly().value(ward.getName()));
-						wards.add(ward.getName());
-						GroupRepresentation wardGroupRep = KeycloakTemplateHelper.wardGroup(ward.getName(), lgaGroupId, wardId);
-						wardGroupId = createGroup(wardGroupRep);
-						updateResource(wardGroupId, wardId, Organization.class);
-					}
+			if (!Validation.validateClinicAndStateCsvLine(csvData)) {
+				logger.warn("CSV validation failed");
+				invalidClinics.add("Row length validation failed: " +  facilityName + "," + stateName + "," + lgaName + "," + wardName);
+				continue;
+			}
 
-					if (!clinics.contains(csvData[7])) {
-						Location clinicLocation = FhirResourceTemplateHelper.clinic(csvData[0], csvData[1], csvData[2], csvData[7]);
-						Organization clinicOrganization = FhirResourceTemplateHelper.clinic(csvData[7], csvData[3], csvData[4], csvData[5], csvData[6], csvData[0], csvData[1], csvData[2], wardId, csvData[10]);
-						facilityOrganizationId = createResource(clinicOrganization, Organization.class, Organization.NAME.matchesExactly().value(clinicOrganization.getName()));
-						facilityLocationId = createResource(clinicLocation, Location.class, Location.NAME.matchesExactly().value(clinicLocation.getName()));
-						clinics.add(clinicOrganization.getName());
+			if (!states.contains(stateName)) {
+				Organization state = FhirResourceTemplateHelper.state(stateName);
+				states.add(state.getName());
+				GroupRepresentation stateGroupRep = KeycloakTemplateHelper.stateGroup(state.getName(), state.getIdElement().getIdPart());
+				stateGroupId = createKeycloakGroup(stateGroupRep);
+				if (stateGroupId == null) {
+					invalidClinics.add("Group creation failed for state: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+				stateId = updateResource(stateGroupId, state, Organization.class, Organization.NAME.matchesExactly().value(state.getName()), new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", "state"));
+				if (stateId == null) {
+					invalidClinics.add("Resource creation failed for state: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+			}
 
-						GroupRepresentation facilityGroupRep = KeycloakTemplateHelper.facilityGroup(
-							clinicOrganization.getName(),
-							wardGroupId,
-							facilityOrganizationId,
-							facilityLocationId,
-							csvData[8],
-							csvData[9],
-							csvData[3],
-							csvData[4],
-							csvData[10]
-						);
-						facilityGroupId = createGroup(facilityGroupRep);
-						updateResource(facilityGroupId, facilityOrganizationId, Organization.class);
-						updateResource(facilityGroupId, facilityLocationId, Location.class);
-					}
-				} else {
-					invalidClinics.add(csvData[7] + "," + csvData[0] + "," + csvData[1] + "," + csvData[2]);
+			if (!lgas.contains(lgaName)) {
+				Organization lga = FhirResourceTemplateHelper.lga(lgaName, stateName, stateId);
+				lgas.add(lga.getName());
+				GroupRepresentation lgaGroupRep = KeycloakTemplateHelper.lgaGroup(lga.getName(), stateGroupId, lga.getIdElement().getIdPart());
+				lgaGroupId = createKeycloakGroup(lgaGroupRep);
+				if (lgaGroupId == null) {
+					invalidClinics.add("Group creation failed for LGA: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+				lgaId = updateResource(lgaGroupId, lga, Organization.class, Organization.NAME.matchesExactly().value(lga.getName()), new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", "lga"));
+				if (lgaId == null) {
+					invalidClinics.add("Resource creation failed for LGA: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+			}
+
+			if (!wards.contains(wardName)) {
+				Organization ward = FhirResourceTemplateHelper.ward(stateName, lgaName, wardName, lgaId);
+				wards.add(ward.getName());
+				GroupRepresentation wardGroupRep = KeycloakTemplateHelper.wardGroup(ward.getName(), lgaGroupId, ward.getIdElement().getIdPart());
+				wardGroupId = createKeycloakGroup(wardGroupRep);
+				if (wardGroupId == null) {
+					invalidClinics.add("Group creation failed for Ward: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+				wardId = updateResource(wardGroupId, ward, Organization.class, Organization.NAME.matchesExactly().value(ward.getName()), new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", "ward"));
+				if (wardId == null) {
+					invalidClinics.add("Resource creation failed for Ward: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+			}
+
+			if (!clinics.contains(facilityName)) {
+				Location clinicLocation = FhirResourceTemplateHelper.clinic(stateName, lgaName, wardName, facilityName);
+				Organization clinicOrganization = FhirResourceTemplateHelper.clinic(facilityName, facilityUID, facilityCode, countryCode, phoneNumber, stateName, lgaName, wardName, wardId, csvData[10]);
+				clinics.add(clinicOrganization.getName());
+
+				GroupRepresentation facilityGroupRep = KeycloakTemplateHelper.facilityGroup(
+					clinicOrganization.getName(),
+					wardGroupId,
+					clinicOrganization.getIdElement().getIdPart(),
+					clinicLocation.getIdElement().getIdPart(),
+					type,
+					ownership,
+					facilityUID,
+					facilityCode,
+					argusoftIdentifier
+				);
+				facilityGroupId = createKeycloakGroup(facilityGroupRep);
+				if (facilityGroupId == null) {
+					invalidClinics.add("Group creation failed for facility: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+				facilityOrganizationId = updateResource(facilityGroupId, clinicOrganization, Organization.class, Organization.NAME.matchesExactly().value(clinicOrganization.getName()), new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", "facility"));
+				facilityLocationId = updateResource(facilityGroupId, clinicLocation, Location.class, Location.NAME.matchesExactly().value(clinicLocation.getName()));
+				if (facilityOrganizationId == null || facilityLocationId == null) {
+					invalidClinics.add("Resource creation failed for Facility: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
 				}
 			}
 		}
-		map.put("Cannot create Clinics with state, lga, ward", invalidClinics);
-		map.put("uploadCSV", "Successful");
+		map.put("count", iteration);
+		if (invalidClinics.size() > 0) {
+			map.put("issues", invalidClinics);
+		}
+		map.put("uploadTaskStatus", "Completed");
 		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
 	}
 
@@ -252,40 +300,79 @@ public class HelperService {
 				continue;
 			}
 			String hcwData[] = singleLine.split(",");
-			organizationId = getOrganizationIdByFacilityUID(hcwData[12]);
-			//firstName,lastName,email,countryCode,phoneNumber,gender,birthDate,keycloakUserName,initialPassword,state,lga,ward,facilityUID,role,qualification,stateIdentifier, Argusoft Identifier
-			if (!hcwData[12].isEmpty()) {
-				if (Validation.validationHcwCsvLine(hcwData)) {
-					if (!(practitioners.contains(hcwData[0]) && practitioners.contains(hcwData[1]) && practitioners.contains(hcwData[4] + hcwData[3]))) {
-						Practitioner hcw = FhirResourceTemplateHelper.hcw(hcwData[0], hcwData[1], hcwData[4], hcwData[3], hcwData[5], hcwData[6], hcwData[9], hcwData[10], hcwData[11], hcwData[12], hcwData[13], hcwData[14], hcwData[15], hcwData[16]);
-						practitionerId = createResource(hcw,
-							Practitioner.class,
-							Practitioner.GIVEN.matches().value(hcw.getName().get(0).getGivenAsSingleString()),
-							Practitioner.FAMILY.matches().value(hcw.getName().get(0).getFamily()),
-							Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(hcwData[4] + hcwData[3]))
-						); // Catch index out of bound
-						practitioners.add(hcw.getName().get(0).getFamily());
-						practitioners.add(hcw.getName().get(0).getGivenAsSingleString());
-						practitioners.add(hcw.getTelecom().get(0).getValue());
-						PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(hcwData[13], hcwData[14], practitionerId, organizationId);
-						practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
-						UserRepresentation user = KeycloakTemplateHelper.user(hcwData[0], hcwData[1], hcwData[2], hcwData[7], hcwData[8], hcwData[4], hcwData[3], practitionerId, practitionerRoleId, hcwData[13], hcwData[9], hcwData[10], hcwData[11], hcwData[12], hcwData[16]);
-						String keycloakUserId = createUser(user);
-						RoleRepresentation role = KeycloakTemplateHelper.role(hcwData[13]);
-						createRoleIfNotExists(role);
-						if (keycloakUserId != null) {
-							assignRole(keycloakUserId,role.getName());
-							updateResource(keycloakUserId, practitionerId, Practitioner.class);
-							updateResource(keycloakUserId, practitionerRoleId, PractitionerRole.class);
-						}
+			//firstName(0),lastName(1),email(2),countryCode(3),phoneNumber(4),gender(5),birthDate(6),keycloakUserName(7),
+			// initialPassword(8),state(9),lga(10),ward(11),facilityUID(12),role(13),qualification(14),stateIdentifier(15), Argusoft Identifier(16)
+			String firstName = hcwData[0];
+			String lastName = hcwData[1];
+			String email = hcwData[2];
+			String countryCode = hcwData[3];
+			String phoneNumber = hcwData[4];
+			String gender = hcwData[5];
+			String birthDate = hcwData[6];
+			String keycloakUserName = hcwData[7];
+			String initialPassword = hcwData[8];
+			String state = hcwData[9];
+			String lga = hcwData[10];
+			String ward = hcwData[11];
+			String facilityUID = hcwData[12];
+			String role = hcwData[13];
+			String qualification = hcwData[14];
+			String stateIdentifier = hcwData[15];
+			String argusoftIdentifier = hcwData[16];
+
+			organizationId = getOrganizationIdByFacilityUID(facilityUID);
+
+			String s = firstName + "," + lastName + "," + state + "," + lga + "," + ward + "," + facilityUID;
+			if (facilityUID.isEmpty()) {
+				map.put("FacilityUid is empty", s);
+				continue;
+			}
+
+			if (!Validation.validationHcwCsvLine(hcwData)) {
+				map.put("CSV length validation failed", s);
+				continue;
+			}
+			if (!(practitioners.contains(firstName) && practitioners.contains(lastName) && practitioners.contains(phoneNumber + countryCode))) {
+				Practitioner practitioner = FhirResourceTemplateHelper.hcw(firstName, lastName, phoneNumber, countryCode, gender, birthDate, state, lga, ward, facilityUID, role, qualification, stateIdentifier, argusoftIdentifier);
+//				practitionerId = createResource(hcw,
+//					Practitioner.class,
+//					Practitioner.GIVEN.matches().value(hcw.getName().get(0).getGivenAsSingleString()),
+//					Practitioner.FAMILY.matches().value(hcw.getName().get(0).getFamily()),
+//					Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(phoneNumber + countryCode))
+//				); // Catch index out of bound
+				practitioners.add(practitioner.getName().get(0).getFamily());
+				practitioners.add(practitioner.getName().get(0).getGivenAsSingleString());
+				practitioners.add(practitioner.getTelecom().get(0).getValue());
+				PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(role, qualification, practitioner.getIdElement().getIdPart(), organizationId);
+//				practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
+				UserRepresentation user = KeycloakTemplateHelper.user(firstName, lastName, email, keycloakUserName, initialPassword, phoneNumber, countryCode, practitioner.getIdElement().getIdPart(), practitionerRole.getIdElement().getIdPart(), role, state, lga, ward, facilityUID, argusoftIdentifier);
+				String keycloakUserId = createKeycloakUser(user);
+				if (keycloakUserId == null) {
+					map.put("User not created", s);
+				} else {
+					RoleRepresentation KeycloakRoleRepresentation = KeycloakTemplateHelper.role(role);
+					createRoleIfNotExists(KeycloakRoleRepresentation);
+					assignRole(keycloakUserId, KeycloakRoleRepresentation.getName());
+					practitionerId = updateResource(
+						keycloakUserId,
+						practitioner,
+						Practitioner.class,
+						Practitioner.GIVEN.matchesExactly().value(practitioner.getName().get(0).getGivenAsSingleString()),
+						Practitioner.FAMILY.matchesExactly().value(practitioner.getName().get(0).getFamily()),
+						Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(countryCode + phoneNumber))
+					);
+					if (practitionerId == null) {
+						invalidUsers.add("Resource creation failed for user: " + s);
+						continue;
+					}
+					practitionerRoleId = updateResource(keycloakUserId, practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId("Practitioner/"+practitionerId));
+					if (practitionerRoleId == null) {
+						invalidUsers.add("Resource creation failed for user: " + s);
 					}
 				}
-			} else {
-				invalidUsers.add(hcwData[0] + " " + hcwData[1] + "," + hcwData[9] + "," + hcwData[10] + "," + hcwData[11] + "," + hcwData[12]);
 			}
 		}
-		map.put("Cannot create users with groups", invalidUsers);
-		map.put("uploadCsv", "Successful");
+		map.put("UploadTaskStatus", "Completed");
 		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
 	}
 
@@ -305,43 +392,105 @@ public class HelperService {
 				iteration++;
 				continue;
 			}
+
 			String hcwData[] = singleLine.split(",");
-			if (!hcwData[11].isEmpty()) {
-				organizationId = getOrganizationIdByOrganizationName(hcwData[11]);
-				//firstName,lastName,email,phoneNumber,countryCode,gender,birthDate,keycloakUserName,facilityUID,role,initialPassword,Organization,Type
-				Organization state = FhirResourceTemplateHelper.state(hcwData[11]);
-				if (Validation.validationHcwCsvLine(hcwData)) {
-					if (!(practitioners.contains(hcwData[0]) && practitioners.contains(hcwData[1]) && practitioners.contains(hcwData[3] + hcwData[4]))) {
-						Practitioner hcw = FhirResourceTemplateHelper.user(hcwData[0], hcwData[1], hcwData[3], hcwData[4], hcwData[5], hcwData[6], hcwData[11], hcwData[6], state.getMeta().getTag().get(0).getCode());
-						practitionerId = createResource(hcw,
-							Practitioner.class,
-							Practitioner.GIVEN.matches().value(hcw.getName().get(0).getGivenAsSingleString()),
-							Practitioner.FAMILY.matches().value(hcw.getName().get(0).getFamily()),
-							Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(hcwData[4] + hcwData[3]))
-						);
-						practitioners.add(hcw.getName().get(0).getFamily());
-						practitioners.add(hcw.getName().get(0).getGivenAsSingleString());
-						practitioners.add(hcw.getTelecom().get(0).getValue());
-						PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(hcwData[10], "NA", practitionerId, organizationId);
-						practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
-						UserRepresentation user = KeycloakTemplateHelper.dashboardUser(hcwData[0], hcwData[1], hcwData[2], hcwData[7], hcwData[8], hcwData[3], hcwData[4], practitionerId, practitionerRoleId, hcwData[9], hcwData[10], hcwData[11], state.getMeta().getTag().get(0).getCode());
-						String keycloakUserId = createUser(user);
-						if (keycloakUserId != null) {
-							updateResource(keycloakUserId, practitionerId, Practitioner.class);
-							updateResource(keycloakUserId, practitionerRoleId, PractitionerRole.class);
-						}
-					}
-				}
-			} else {
-				invalidUsers.add(hcwData[0] + " " + hcwData[1] + "," + hcwData[11]);
+
+			if (!Validation.validationDashboardUserCsvLine(hcwData)) {
+				invalidUsers.add("CSV length validation failed: " + hcwData[0] + " " + hcwData[1]);
+				continue;
+			}
+
+			String firstName = hcwData[0];
+			String lastName = hcwData[1];
+			String email = hcwData[2];
+			String phoneNumber = hcwData[3];
+			String countryCode = hcwData[4];
+			String gender = hcwData[5];
+			String birthDate = hcwData[6];
+			String userName = hcwData[7];
+			String initialPassword = hcwData[8];
+			String facilityUID = hcwData[9];
+			String role = hcwData[10];
+			String organizationName = hcwData[11];
+			String type = hcwData[12];
+
+			if (organizationName.isEmpty()) {
+				map.put("Can not create user", firstName + " " + lastName + "," + organizationName);
+				continue;
+			}
+
+			organizationId = getOrganizationIdByOrganizationNameAndType(organizationName, type);
+			if (organizationId == null) {
+				invalidUsers.add("Organization not found: " + firstName + " " + lastName + "," + organizationName);
+				continue;
+			}
+
+			if (practitioners.contains(firstName) && practitioners.contains(lastName) && practitioners.contains(email)) {
+				invalidUsers.add("Practitioner already exists: " + firstName + "," + lastName + "," + userName + "," + email );
+				continue;
+			}
+
+			Practitioner practitioner = FhirResourceTemplateHelper.user(firstName, lastName, phoneNumber, countryCode, gender, birthDate, organizationName, facilityUID, type.toLowerCase());
+			practitioners.add(practitioner.getName().get(0).getFamily());
+			practitioners.add(practitioner.getName().get(0).getGivenAsSingleString());
+			practitioners.add(email);
+			PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(role, "NA", practitioner.getIdElement().getIdPart(), organizationId);
+
+			UserRepresentation user = KeycloakTemplateHelper.dashboardUser(
+				firstName,
+				lastName,
+				email,
+				userName,
+				initialPassword,
+				phoneNumber,
+				countryCode,
+				practitioner.getIdElement().getIdPart(),
+				practitionerRole.getIdElement().getIdPart(),
+				facilityUID,
+				role,
+				organizationName,
+				type.toLowerCase()
+			);
+			String keycloakUserId = createKeycloakUser(user);
+			if (keycloakUserId == null) {
+				invalidUsers.add("Failed to create user: " + firstName + " " + lastName + "," + userName + "," + email);
+				continue;
+			}
+			practitionerId = updateResource(
+				keycloakUserId,
+				practitioner,
+				Practitioner.class,
+				Practitioner.GIVEN.matchesExactly().value(practitioner.getName().get(0).getGivenAsSingleString()),
+				Practitioner.FAMILY.matchesExactly().value(practitioner.getName().get(0).getFamily()),
+				Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(countryCode + phoneNumber))
+			);
+			if (practitionerId == null) {
+				invalidUsers.add("Failed to create resource for user: " + firstName + " " + lastName + "," + userName + "," + email);
+				continue;
+			}
+			if (!practitionerId.equals(practitioner.getIdElement().getIdPart())) {
+				// If the practitioner already exists we need to change the reference.
+				// Because in while creating PractitionerRole old previous practitioner id used as reference.
+				practitionerRole.setId(new IdType("Practitioner", practitionerId));
+			}
+			practitionerRoleId = updateResource(
+				keycloakUserId,
+				practitionerRole,
+				PractitionerRole.class,
+				PractitionerRole.PRACTITIONER.hasId("Practitioner/"+practitionerId)
+			);
+			if (practitionerRoleId == null) {
+				invalidUsers.add("Failed to create resource for user: " + firstName + " " + lastName + "," + userName + "," + email);
 			}
 		}
-		map.put("Cannot create users with organization", invalidUsers);
-		map.put("uploadCsv", "Successful");
+		if (invalidUsers.size() > 0) {
+			map.put("issues", invalidUsers);
+		}
+		map.put("taskStatus", "Completed");
 		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
 	}
 
-	public ResponseEntity<?> getTableData(String lastUpdated){
+	public ResponseEntity<?> getTableData(Long lastUpdated){
 		notificationDataSource = NotificationDataSource.getInstance();
 		List<PatientIdentifierEntity> patientInfoResourceEntities = notificationDataSource.getPatientInfoResourceEntityDataBeyondLastUpdated(lastUpdated);
 		return new ResponseEntity<List<PatientIdentifierEntity>>(patientInfoResourceEntities,HttpStatus.OK);
@@ -382,7 +531,7 @@ public class HelperService {
 			asyncRecord.setSummaryResult(ClobProxy.generateProxy(base64SummaryResult));
 			datasource.update(asyncRecord);
 		} catch (Exception e) {
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 		}
 
 	}
@@ -561,7 +710,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			List<ScoreCardIndicatorItem> indicators = getIndicatorItemListFromFile(env);
 			return ResponseEntity.ok(indicators);
 		} catch (NullPointerException e) {
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 			return ResponseEntity.ok("Error : ScoreCard Config File Not Found");
 		}
 	}
@@ -571,7 +720,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			CategoryItem categoryItem = getCategoriesFromFile(env);
 			return ResponseEntity.ok(categoryItem);
 		} catch (NullPointerException e) {
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 			return ResponseEntity.ok("Error : Category Config File Not Found");
 		}
 	}
@@ -582,7 +731,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			List<BarChartDefinition> barChartDefinition = getBarChartItemListFromFile(env);
 			return ResponseEntity.ok(barChartDefinition);
 		} catch (NullPointerException e) {
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 			return ResponseEntity.ok("Error :Bar Config File Not Found");
 		}
 	}
@@ -591,7 +740,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			List<LineChart> lineCharts = getLineChartDefinitionsItemListFromFile(env);
 			return ResponseEntity.ok(lineCharts);
 		} catch (NullPointerException e) {
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 			return ResponseEntity.ok("Error :Line Config File Not Found");
 		}
 	}
@@ -600,7 +749,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			List<TabularItem> indicators = getTabularItemListFromFile(env);
 			return ResponseEntity.ok(indicators);
 		} catch (NullPointerException e) {
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 			return ResponseEntity.ok("Error : Tabular Config File Not Found");
 		}
 	}
@@ -610,7 +759,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			List<PieChartDefinition> pieChartIndicators = getPieChartItemDefinitionFromFile(env);
 			return ResponseEntity.ok(pieChartIndicators);
 		} catch (NullPointerException e){
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 			return ResponseEntity.ok("Error :Pie Chart Config File Not Found");
 		}
 	}
@@ -620,7 +769,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			List<FilterItem> filters = dashboardEnvToConfigMap.get(env).getFilterItems();
 			return ResponseEntity.ok(filters);
 		} catch (NullPointerException e) {
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 			return ResponseEntity.ok("Error: Config File Not Found");
 		}
 	}
@@ -1342,18 +1491,18 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		return null;
 	}
 
-	public String getOrganizationIdByOrganizationName(String name) {
-		Bundle organizationBundle = new Bundle();
-		String queryPath = "/Organization?";
-		queryPath += "name=" + name + "";
-		String searchUrl = getValidURL(FhirClientAuthenticatorService.serverBase + queryPath);
-		if (searchUrl == null) {
-			return null;
-		}
-		FhirUtils.getBundleBySearchUrl(organizationBundle, searchUrl);
+	public String getOrganizationIdByOrganizationNameAndType(String name, String type) {
+
+		Bundle organizationBundle = FhirClientAuthenticatorService.getFhirClient()
+			.search()
+			.forResource(Organization.class)
+			.where(Organization.NAME.matchesExactly().value(name))
+			.and(new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", type))
+			.returnBundle(Bundle.class)
+			.execute();
+
 		if (organizationBundle.hasEntry() && organizationBundle.getEntry().size() > 0) {
-			Organization organization = (Organization) organizationBundle.getEntry().get(0).getResource();
-			return organization.getIdElement().getIdPart();
+			return organizationBundle.getEntry().get(0).getResource().getIdElement().getIdPart();
 		}
 		return null;
 	}
@@ -1373,36 +1522,51 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		}
 	}
 
-	private String createGroup(GroupRepresentation groupRep) {
+	private String createKeycloakGroup(GroupRepresentation groupRep) {
 		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
-		List<GroupRepresentation> groups = realmResource.groups().groups(groupRep.getName(), 0, Integer.MAX_VALUE);
-		if (!groups.isEmpty()) {
-			return groups.get(0).getId();
+		List<GroupRepresentation> groups = realmResource.groups().groups(groupRep.getName(), 0, Integer.MAX_VALUE, true);
+
+		for (GroupRepresentation group : groups) {
+			if (group.getName().equals(groupRep.getName())) {
+				return group.getId();
+			}
 		}
-		Response response = realmResource.groups().add(groupRep);
-		return CreatedResponseUtil.getCreatedId(response);
+		try {
+			Response response = realmResource.groups().add(groupRep);
+			return CreatedResponseUtil.getCreatedId(response);
+		} catch (WebApplicationException ex) {
+			logger.warn(ex.getLocalizedMessage());
+			return null;
+		}
 	}
 
-	private String createResource(Resource resource, Class<? extends IBaseResource> theClass, ICriterion<?>... theCriterion) {
-		IQuery<IBaseBundle> query = FhirClientAuthenticatorService.getFhirClient().search().forResource(theClass).where(theCriterion[0]);
+//	private IBaseResource createResource(Resource resource, Class<? extends IBaseResource> theClass, ICriterion<?>... theCriterion) {
+//		IQuery<IBaseBundle> query = FhirClientAuthenticatorService.getFhirClient().search().forResource(theClass).where(theCriterion[0]);
+//		for (int i = 1; i < theCriterion.length; i++)
+//			query = query.and(theCriterion[i]);
+//		Bundle bundle = query.returnBundle(Bundle.class).execute();
+//		if (!bundle.hasEntry()) {
+//			MethodOutcome outcome = FhirClientAuthenticatorService.getFhirClient().update().resource(resource).execute();
+//			logger.warn(resource.getId());
+//			return outcome.getId().getIdPart();
+//		}
+//		return bundle.getEntry().get(0).getFullUrl().split("/")[5];
+//	}
+
+	private <R extends IBaseResource> String updateResource(String keycloakId, IBaseResource resource, Class<R> resourceClass, ICriterion<?>... theCriterion) {
+		IQuery<IBaseBundle> query = FhirClientAuthenticatorService.getFhirClient().search().forResource(resourceClass).where(theCriterion[0]);
 		for (int i = 1; i < theCriterion.length; i++)
 			query = query.and(theCriterion[i]);
-		Bundle bundle = query.returnBundle(Bundle.class).execute();
-		if (!bundle.hasEntry()) {
-			MethodOutcome outcome = FhirClientAuthenticatorService.getFhirClient().update().resource(resource).execute();
-			return outcome.getId().getIdPart();
-		}
-		return bundle.getEntry().get(0).getFullUrl().split("/")[5];
-	}
-
-	private <R extends IBaseResource> void updateResource(String keycloakId, String resourceId, Class<R> resourceClass) {
-		R resource = FhirClientAuthenticatorService.getFhirClient().read().resource(resourceClass).withId(resourceId).execute();
 		try {
-			Method getIdentifier = resource.getClass().getMethod("getIdentifier");
-			List<Identifier> identifierList = (List<Identifier>) getIdentifier.invoke(resource);
-			for (Identifier identifier : identifierList) {
-				if (identifier.getSystem().equals(IDENTIFIER_SYSTEM + "/KeycloakId")) {
-					return;
+			Bundle bundle = query.returnBundle(Bundle.class).execute();
+			if (bundle.hasEntry() && bundle.getEntry().size() > 0) {
+				Resource existingResource = bundle.getEntry().get(0).getResource();
+				Method getIdentifier = resource.getClass().getMethod("getIdentifier");
+				List<Identifier> identifierList = (List<Identifier>) getIdentifier.invoke(existingResource);
+				for (Identifier identifier : identifierList) {
+					if (identifier.getSystem().equals(IDENTIFIER_SYSTEM + "/KeycloakId") && identifier.getValue().equals(keycloakId)) {
+						return existingResource.getIdElement().getIdPart();
+					}
 				}
 			}
 			Method addIdentifier = resource.getClass().getMethod("addIdentifier");
@@ -1410,26 +1574,30 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			obj.setSystem(IDENTIFIER_SYSTEM + "/KeycloakId");
 			obj.setValue(keycloakId);
 			MethodOutcome outcome = FhirClientAuthenticatorService.getFhirClient().update().resource(resource).execute();
+			return outcome.getId().getIdPart();
 		} catch (SecurityException | NoSuchMethodException | InvocationTargetException e) {
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 		} catch (IllegalAccessException e) {
-			e.printStackTrace();
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 		}
+		return null;
 	}
 
-	private String createUser(UserRepresentation userRep) {
+	private String createKeycloakUser(UserRepresentation userRep) {
 		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
 		List<UserRepresentation> users = realmResource.users().search(userRep.getUsername(), 0, Integer.MAX_VALUE);
 		//if not empty, return id
-		if (!users.isEmpty())
-			users.get(0).getId();
+
+		for (UserRepresentation user: users) {
+			if (Objects.equals(user.getUsername(), userRep.getUsername())) {
+				return user.getId();
+			}
+		}
 		try {
 			Response response = realmResource.users().create(userRep);
 			return CreatedResponseUtil.getCreatedId(response);
 		} catch (WebApplicationException e) {
-			logger.error("Cannot create user " + userRep.getUsername() + " with groups " + userRep.getGroups() + "\n");
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 			return null;
 		}
 	}
