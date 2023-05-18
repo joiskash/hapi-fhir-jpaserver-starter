@@ -769,30 +769,24 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		}
 	}
 
-	public ResponseEntity<?> getPatientCount(List<OrgItem> orgItemsList) {
-		List<String> orgItems = new ArrayList<>();
-		orgItems = loopThroughOrgItems(orgItemsList,orgItems);
+	public ResponseEntity<?> getPatientCount(String practitionerRoleId) {
+		String organizationId = getOrganizationIdByPractitionerRoleId(practitionerRoleId);
 		int patientCount = 0;
-		for (String orgId : orgItems) {
-			patientCount += client.search()
+
+		Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(organizationId);
+		for (String orgId : idsAndOrgIdToChildrenMapPair.first) {
+			patientCount += FhirClientAuthenticatorService.getFhirClient().search()
 				.byUrl("Patient?_has:Encounter:patient:service-provider=" + orgId + "&_count=0")
 				.returnBundle(Bundle.class)
 				.execute()
 				.getTotal();
 		}
-	return ResponseEntity.ok(patientCount);
-	}
-
-	public List<String> loopThroughOrgItems(List<OrgItem> orgItemList, List<String> orgItems) {
-		for (OrgItem orgItem : orgItemList) {
-			// Perform operations with orgItem
-			orgItems.add(orgItem.getId());
-			// Recursively loop through the children if present
-			if (!orgItem.getChildren().isEmpty()) {
-				loopThroughOrgItems(orgItem.getChildren(),orgItems);
-			}
-		}
-		return orgItems;
+		List<Map<String, String>> patientCountList = new ArrayList<>();
+		Map<String, String> patientCountItem = new HashMap<>();
+		patientCountItem.put("title", "Total number of Patients");
+		patientCountItem.put("value", String.valueOf(patientCount));
+		patientCountList.add(patientCountItem);
+		return ResponseEntity.ok(patientCountList);
 	}
 
 	public ResponseEntity<?> getFilters(String env) {

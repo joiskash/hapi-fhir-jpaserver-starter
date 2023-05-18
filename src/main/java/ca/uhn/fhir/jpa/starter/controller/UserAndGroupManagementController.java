@@ -223,8 +223,7 @@ public class UserAndGroupManagementController {
 		if (practitionerRoleId == null) {
 			return ResponseEntity.ok("Error : Practitioner Role Id not found in token");
 		}
-		List<OrgItem> orgItemsList = helperService.getOrganizationsByPractitionerRoleId(practitionerRoleId);
-		return helperService.getPatientCount(orgItemsList);
+		return helperService.getPatientCount(practitionerRoleId);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/data")
