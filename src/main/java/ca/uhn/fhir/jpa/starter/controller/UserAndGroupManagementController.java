@@ -215,16 +215,16 @@ public class UserAndGroupManagementController {
 		return helperService.getFilters(env);
 	}
 
-	@RequestMapping(method = RequestMethod.GET, value = "/patientCount")
-	public ResponseEntity<?> patientCount(
-		@RequestHeader(name = "Authorization") String token
-	) {
-		String practitionerRoleId = Validation.getJWTToken(token).getPractitionerRoleId();
-		if (practitionerRoleId == null) {
-			return ResponseEntity.ok("Error : Practitioner Role Id not found in token");
-		}
-		return helperService.getPatientCount(practitionerRoleId);
-	}
+//	@RequestMapping(method = RequestMethod.GET, value = "/patientCount")
+//	public ResponseEntity<?> patientCount(
+//		@RequestHeader(name = "Authorization") String token
+//	) {
+//		String practitionerRoleId = Validation.getJWTToken(token).getPractitionerRoleId();
+//		if (practitionerRoleId == null) {
+//			return ResponseEntity.ok("Error : Practitioner Role Id not found in token");
+//		}
+//		return helperService.getPatientCount(practitionerRoleId);
+//	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/data")
 	public ResponseEntity<?> data(
@@ -370,6 +370,7 @@ public class UserAndGroupManagementController {
 			return ResponseEntity.ok("Error: Unable to find analytics file");
 		}
 		analyticItems.addAll(maternalAnalyticsItems);
+		analyticItems.add(helperService.getPatientCount(practitionerRoleId));
 		return ResponseEntity.ok(analyticItems);
 	}
 

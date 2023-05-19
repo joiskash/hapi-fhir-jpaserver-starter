@@ -763,7 +763,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		}
 	}
 
-	public ResponseEntity<?> getPatientCount(String practitionerRoleId) {
+	public AnalyticItem getPatientCount(String practitionerRoleId) {
 		String organizationId = getOrganizationIdByPractitionerRoleId(practitionerRoleId);
 		int patientCount = 0;
 
@@ -775,12 +775,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 				.execute()
 				.getTotal();
 		}
-		List<Map<String, String>> patientCountList = new ArrayList<>();
-		Map<String, String> patientCountItem = new HashMap<>();
-		patientCountItem.put("title", "Total number of Patients");
-		patientCountItem.put("value", String.valueOf(patientCount));
-		patientCountList.add(patientCountItem);
-		return ResponseEntity.ok(patientCountList);
+		return new AnalyticItem("Total number of Patients",String.valueOf(patientCount),null);
 	}
 
 	public ResponseEntity<?> getFilters(String env) {
