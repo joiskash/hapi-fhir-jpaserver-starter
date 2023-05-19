@@ -118,10 +118,6 @@ public class HelperService {
 	private static final long AUTH_FIXED_DELAY = 50 * 60000L;
 	private static final long DELAY = 2 * 60000;
 
-	FhirContext fhirContext = FhirContext.forR4();
-	String serverUrl = "http://testhost.dashboard:8085/fhir";
-	IGenericClient client = fhirContext.newRestfulGenericClient(serverUrl);
-
 	NotificationDataSource notificationDataSource;
 	LinkedHashMap<String,Pair<List<String>, LinkedHashMap<String, List<String>>>> mapOfIdsAndOrgIdToChildrenMapPair;
 	LinkedHashMap<String,List<OrgItem>> mapOfOrgHierarchy;
