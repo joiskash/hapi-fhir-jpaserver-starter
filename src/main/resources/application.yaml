@@ -1,6 +1,17 @@
 server:
    port: 8085
 
+management:
+   endpoints:
+      enabled-by-default: false
+      web:
+         exposure:
+            include: "*"
+            exclude: "env,beans"
+   endpoint:
+      health:
+         enabled: true
+
 spring:
    main:
       allow-circular-references: true
@@ -15,8 +26,8 @@ spring:
       password: admin
       driverClassName: com.mysql.cj.jdbc.Driver
       hikari:    
-         minimum-pool-size: 2
-         maximum-pool-size: 40
+         minimum-pool-size: 1
+         maximum-pool-size: 2
          connection-timeout: 3000000
          # idle-timeout: 60000
          max-lifetime: 6000000
@@ -64,19 +75,19 @@ hapi:
 #      hibernate.search.backend.directory.type: local-filesystem
 #      hibernate.search.backend.directory.root: target/lucenefiles
 #      hibernate.search.backend.lucene_version: lucene_current
-      envs: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\envs
-      notification_datasource_config_path: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\notificationDataSourceConfig.xml
-      anc_config_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\anc_config.json
-      filters_config_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\filters_config.json
-      daily_and_summary_config_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\daily_and_summary_config.json
-      pie_config_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\pie_config.json
-      gcp_credential_file_path: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\gcpCredential.json
-      sql_screen_time_file_path: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\sql_screen_time.txt
-      line_chart_definitions_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\chart_definition.json
-      tabular_config_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\tabular_config.json
-      analytics_config_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\analytics_config.json
-      pk_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\android.txt
-      dashboard_public_key_file: C:\Users\Kashyap\bkp\source\repos\anc-oyo\data\hapi\android.txt
+      envs: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\envs
+      notification_datasource_config_path: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\notificationDataSourceConfig.xml
+      anc_config_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\anc_config.json
+      filters_config_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\filters_config.json
+      daily_and_summary_config_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\daily_and_summary_config.json
+      pie_config_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\pie_config.json
+      gcp_credential_file_path: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\gcpCredential.json
+      sql_screen_time_file_path: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\sql_screen_time.txt
+      line_chart_definitions_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\chart_definition.json
+      tabular_config_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\tabular_config.json
+      analytics_config_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\analytics_config.json
+      pk_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\android.txt
+      dashboard_public_key_file: C:\workspace\IPRD\ANC\anc-oyo\data\hapi\android.txt
       organization_ids_for_caching:
         - "c91ee7cd-f994-4771-8863-3713e6e52e98"
         - "b759ff8c-e659-4adf-adc3-8bdc17733b14"
@@ -84,8 +95,8 @@ hapi:
         - "impact-health-v1"
         - "impact-health-v2"
       dev_user_role: dev
-      executor_core_pool_size: 4
-      executor_max_pool_size: 6
+      executor_core_pool_size: 1
+      executor_max_pool_size: 2
       executor_queue_capacity: 50000
       executor_thread_name_prefix: AsynchThread-
       keycloak_server_address: http://localhost:8081/auth
@@ -113,7 +124,7 @@ hapi:
 ### to determine the FHIR server address
       search-coord-core-pool-size: 2
 #    enforce_referential_integrity_on_write: false
-      search-coord-max-pool-size: 500
+      search-coord-max-pool-size: 1
 #   use_apache_address_strategy: false
 ### forces the use of the https:// protocol for the returned server address.
 ### alternatively, it may be set using the X-Forwarded-Proto header.

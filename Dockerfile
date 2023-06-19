@@ -42,3 +42,6 @@ COPY --chown=65532:65532 images /app/images
 USER 65532:65532
 WORKDIR /app
 CMD ["/app/main.war"]
+
+HEALTHCHECK --interval=5s --timeout=5s \
+            CMD curl --silent --fail http://localhost:8085/actuator/health || exit 1
