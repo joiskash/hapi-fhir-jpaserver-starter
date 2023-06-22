@@ -1,3 +1,11 @@
+FROM busybox:1.35.0-uclibc as busybox
+
+# Stage 1: Build stage with Alpine base image
+FROM alpine:3.14 AS builder
+
+# Install curl in the Alpine image
+RUN apk --no-cache add curl
+
 FROM maven:3.8-openjdk-17-slim as build-hapi
 WORKDIR /tmp/hapi-fhir-jpaserver-starter
 
@@ -34,6 +42,9 @@ ENV ALLOW_EMPTY_PASSWORD=yes
 
 ########### distroless brings focus on security and runs on plain spring boot - this is the default image
 FROM gcr.io/distroless/java17:nonroot as default
+COPY --from=busybox:1.35.0-uclibc /bin/sh /bin/sh
+COPY --from=builder /usr/bin/curl /bin/curl
+
 COPY --chown=nonroot:nonroot --from=build-distroless /app /app
 COPY --chown=65532:65532 images /app/images
 # 65532 is the nonroot user's uid
@@ -43,5 +54,5 @@ USER 65532:65532
 WORKDIR /app
 CMD ["/app/main.war"]
 
-HEALTHCHECK --interval=5s --timeout=5s \
-            CMD curl --silent --fail http://localhost:8085/actuator/health || exit 1
+# HEALTHCHECK --interval=5s --timeout=5s \
+#             CMD curl --silent --fail http://localhost:8085/actuator/health || exit 1

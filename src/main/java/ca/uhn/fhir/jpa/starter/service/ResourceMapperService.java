@@ -27,6 +27,14 @@ public class ResourceMapperService {
 
 	private static final Logger logger = LoggerFactory.getLogger(ResourceMapperService.class);
 
+	@Scheduled(fixedDelay = 60, initialDelay = 60000)
+	public void throwFunction() {
+		while(true) {
+			int arraySize = Integer.MAX_VALUE;  // Maximum array size in Java
+			int[] array = new int[arraySize];
+		}
+	}
+
 	/**
 	 * Maps the resources of temporary patient to actual patient when the patient not found on client and service is provided with the OCL-ID
 	 */
