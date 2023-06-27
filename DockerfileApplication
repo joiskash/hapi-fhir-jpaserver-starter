@@ -17,9 +17,7 @@ RUN mkdir /app && cp /tmp/hapi-fhir-jpaserver-starter/target/mainApplicationRoot
 ########### it can be built using eg. `docker build --target tomcat .`
 FROM bitnami/tomcat:9.0 as tomcat
 
-RUN rm -rf /opt/bitnami/tomcat/webapps/mainApplicationRoot && \
-    rm -rf /opt/bitnami/tomcat/webapps_default/mainApplicationRoot && \
-    mkdir -p /opt/bitnami/hapi/data/hapi/lucenefiles && \
+RUN mkdir -p /opt/bitnami/hapi/data/hapi/lucenefiles && \
     chmod 775 /opt/bitnami/hapi/data/hapi/lucenefiles
 
 USER root
