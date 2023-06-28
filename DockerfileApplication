@@ -10,7 +10,8 @@ RUN mvn  -T 12 install -DskipTests -Djdk.lang.Process.launchMechanism=vfork -Dma
 
 FROM build-hapi AS build-distroless
 RUN mvn package spring-boot:repackage -PmainApplication
-RUN mkdir /app && cp /tmp/hapi-fhir-jpaserver-starter/target/mainApplicationRoot.war /app/application.war
+RUN mkdir /app && cp /tmp/hapi-fhir-jpaserver-starter/target/mainApplicationRoot.war /app/main.war
+ 
  
 
 ########### bitnami tomcat version is suitable for debugging and comes with a shell
@@ -41,4 +42,4 @@ COPY --chown=65532:65532 images /app/images
 # is running as a non-root (uid != 0) user.
 USER 65532:65532
 WORKDIR /app
-CMD ["/app/application.war"]
+CMD ["/app/main.war"]
