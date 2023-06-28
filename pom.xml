@@ -495,13 +495,6 @@
     <profiles>
         <profile>
             <id>replication</id>
-            <dependencies>
-                <dependency>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-web</artifactId>
-                    <version>${spring_boot_version}</version>
-                </dependency>
-            </dependencies>
             <build>
 
                 <pluginManagement>
@@ -680,13 +673,6 @@
 
         <profile>
             <id>mainApplication</id>
-            <dependencies>
-                <dependency>
-                    <groupId>org.springframework.boot</groupId>
-                    <artifactId>spring-boot-starter-web</artifactId>
-                    <version>${spring_boot_version}</version>
-                </dependency>
-            </dependencies>
             <build>
 
                 <pluginManagement>

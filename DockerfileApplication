@@ -11,7 +11,7 @@ RUN mvn  -T 12 install -DskipTests -Djdk.lang.Process.launchMechanism=vfork -Dma
 FROM build-hapi AS build-distroless
 RUN mvn package spring-boot:repackage -PmainApplication
 RUN mkdir /app && cp /tmp/hapi-fhir-jpaserver-starter/target/mainApplicationRoot.war /app/main.war
-
+ 
 
 ########### bitnami tomcat version is suitable for debugging and comes with a shell
 ########### it can be built using eg. `docker build --target tomcat .`
