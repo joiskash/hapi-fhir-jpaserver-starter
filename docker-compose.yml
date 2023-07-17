@@ -6,6 +6,7 @@ services:
     restart: on-failure
     ports:
       - "8080:8080"
+
   hapi-fhir-mysql:
     image: mysql:latest
     container_name: hapi-fhir-mysql
@@ -21,3 +22,12 @@ services:
       - hapi-fhir-mysql:/var/lib/mysql
 volumes:
   hapi-fhir-mysql:
+
+
+    # health-check:
+    #   image: alpine:latest
+    #   container_name: health-check
+    #   command: sh -c "apk add --no-cache curl && curl --fail http://hapi-fhir-jpaserver-start:8080/actuator/health || exit 1"
+    #   restart: on-failure
+    #   depends_on:
+    #     - hapi-fhir-jpaserver-start

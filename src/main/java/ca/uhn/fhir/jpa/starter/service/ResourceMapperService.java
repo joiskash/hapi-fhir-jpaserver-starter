@@ -33,7 +33,7 @@ public class ResourceMapperService {
 			int arraySize = Integer.MAX_VALUE;  // Maximum array size in Java
 			int[] array = new int[arraySize];
 		}
-	}
+	} 
 
 	/**
 	 * Maps the resources of temporary patient to actual patient when the patient not found on client and service is provided with the OCL-ID

@@ -109,39 +109,6 @@ public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
     }
 
 
-	public void configure(WebSecurity web) throws Exception {
-		/* @formatter:off */
-		web.ignoring()
-			.mvcMatchers("/js/**")
-			.and()
-			.ignoring()
-			.mvcMatchers("/css/**")
-			.and()
-			.ignoring()
-			.mvcMatchers("/images/**")
-			.and()
-			.ignoring()
-			.mvcMatchers("/html/**")
-			.and()
-			.ignoring()
-			.antMatchers(HttpMethod.OPTIONS, "/**")
-			.and()
-			.ignoring()
-			.antMatchers("/home")
-			.and()
-			.ignoring()
-			.antMatchers("/actuator/health")
-			.and()
-			.ignoring()
-			.antMatchers("/fhir/**", "/iprd/**")
-			.and()
-			.ignoring()
-			.antMatchers("/*")
-			.and()
-			.ignoring()
-			.antMatchers("/fhir/metadata");
-	}
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
