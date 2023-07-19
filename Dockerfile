@@ -42,4 +42,4 @@ USER 65532:65532
 WORKDIR /app
 COPY HealthCheck.java .
 CMD ["/app/main.war"]
-HEALTHCHECK --interval=500s --timeout=3s --retries=2 CMD ["java", "HealthCheck.java"]
+HEALTHCHECK --interval=100s --timeout=5s --retries=2 CMD ["java", "HealthCheck.java", "||", "exit", "1"]
