@@ -22,10 +22,11 @@ public class KeycloakTemplateHelper {
 		stateGroupRep.singleAttribute("organization_id", fhirResourceId);
 		return stateGroupRep;
 	}
-	public static GroupRepresentation stateGroup(String name, String fhirResourceId) {
+	public static GroupRepresentation stateGroup(String name, String parentId, String fhirResourceId) {
 		GroupRepresentation stateGroupRep = new GroupRepresentation();
 		stateGroupRep.setName(name);
 		stateGroupRep.singleAttribute("type", STATE);
+		stateGroupRep.singleAttribute("parent", parentId);
 		stateGroupRep.singleAttribute("organization_id", fhirResourceId);
 		return stateGroupRep;
 	}
@@ -64,14 +65,14 @@ public class KeycloakTemplateHelper {
 		return facilityGroupRep;
 	}
 	
-	public static UserRepresentation user(String firstName,String lastName,String email,String userName,String password,String phoneNumber,String countryCode, String practitionerId, String practitionerRoleId,String role, String stateGroup, String lgaGroup, String wardGroup, String facilityGroup, String argusoftId) {
+	public static UserRepresentation user(String firstName,String lastName,String email,String userName,String password,String phoneNumber,String countryCode, String practitionerId, String practitionerRoleId,String role, String stateGroup, String lgaGroup, String wardGroup, String facilityGroup, String argusoftId, String countryGroup) {
 		UserRepresentation user = new UserRepresentation();
 		CredentialRepresentation credential = new CredentialRepresentation();
 		credential.setType(CredentialRepresentation.PASSWORD);
 		credential.setValue(password);
 		credential.setTemporary(true);
 		user.setCredentials(Arrays.asList(credential));
-		user.setGroups(Arrays.asList(stateGroup, lgaGroup, wardGroup, facilityGroup));
+		user.setGroups(Arrays.asList(countryGroup, stateGroup, lgaGroup, wardGroup, facilityGroup));
 		user.setUsername(userName);
 		user.setFirstName(firstName);
 		user.setLastName(lastName);

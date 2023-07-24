@@ -3,7 +3,6 @@ package ca.uhn.fhir.jpa.starter.service;
 import android.util.Pair;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.jpa.starter.AppProperties;
-import ca.uhn.fhir.jpa.starter.model.ApiAsyncTaskEntity;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
@@ -12,11 +11,7 @@ import ca.uhn.fhir.rest.gclient.IQuery;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
-import com.iprd.fhir.utils.FhirResourceTemplateHelper;
 import com.iprd.fhir.utils.FhirUtils;
-import com.iprd.fhir.utils.KeycloakTemplateHelper;
-import com.iprd.fhir.utils.Validation;
-import com.iprd.report.DataResult;
 import com.iprd.report.FhirClientProvider;
 import com.iprd.report.OrgItem;
 import com.iprd.report.ReportGeneratorFactory;
@@ -25,7 +20,6 @@ import com.iprd.report.model.FilterOptions;
 import com.iprd.report.model.definition.IndicatorItem;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.hibernate.engine.jdbc.ClobProxy;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
@@ -41,12 +35,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
@@ -58,7 +49,10 @@ import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.sql.Clob;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.ListIterator;
 import java.util.stream.Collectors;
 
 import static org.hibernate.search.util.common.impl.CollectionHelper.asList;
@@ -94,199 +88,209 @@ public class ChartService {
 
 	NotificationDataSource notificationDataSource;
 
-	public ResponseEntity<LinkedHashMap<String, Object>> createGroups(MultipartFile file) throws IOException {
+//	public ResponseEntity<LinkedHashMap<String, Object>> createGroups(MultipartFile file) throws IOException {
+//
+//		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+//		List<String> countries = new ArrayList<>();
+//		List<String> states = new ArrayList<>();
+//		List<String> lgas = new ArrayList<>();
+//		List<String> wards = new ArrayList<>();
+//		List<String> clinics = new ArrayList<>();
+//		List<String> invalidClinics = new ArrayList<>();
+//
+//		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
+//		String singleLine;
+//		int iteration = 0;
+//		String countryId = "", stateId = "", lgaId = "", wardId = "", facilityOrganizationId = "", facilityLocationId = "";
+//		String countryGroupId = "", stateGroupId = "", lgaGroupId = "", wardGroupId = "", facilityGroupId = "";
+//
+//		while ((singleLine = bufferedReader.readLine()) != null) {
+//			if (iteration == 0) { //skip header of CSV file
+//				iteration++;
+//				continue;
+//			}
+//			String[] csvData = singleLine.split(",");
+//			//State(0), LGA(1), Ward(2), FacilityUID(3), FacilityCode(4), CountryCode(5), PhoneNumber(6), FacilityName(7), FacilityLevel(8), Ownership(9), Argusoft Identifier(10), Longitude(11), Latitude(12), Pluscode(13), Country(14)
+//			if (!csvData[3].isEmpty()) {
+//				if (Validation.validateClinicAndStateCsvLine(csvData)) {
+//					if (!countries.contains(csvData[14])) {
+//						Organization country = FhirResourceTemplateHelper.country(csvData[0]);
+//						countryId = createResource(country, Organization.class, Organization.NAME.matchesExactly().value(country.getName()));
+//						states.add(country.getName());
+//						GroupRepresentation stateGroupRep = KeycloakTemplateHelper.countryGroup(country.getName(), countryId);
+//						countryGroupId = createGroup(stateGroupRep);
+//						updateResource(countryGroupId, countryId, Organization.class);
+//					}
+//
+//					if (!states.contains(csvData[0])) {
+//						Organization state = FhirResourceTemplateHelper.state(csvData[0], csvData[14], countryId);
+//						stateId = createResource(state, Organization.class, Organization.NAME.matchesExactly().value(state.getName()));
+//						states.add(state.getName());
+//						GroupRepresentation stateGroupRep = KeycloakTemplateHelper.stateGroup(state.getName(), countryGroupId, stateId);
+//						stateGroupId = createGroup(stateGroupRep);
+//						updateResource(stateGroupId, stateId, Organization.class);
+//					}
+//
+//					if (!lgas.contains(csvData[1])) {
+//						Organization lga = FhirResourceTemplateHelper.lga(csvData[1], csvData[0], stateId);
+//						lgaId = createResource(lga, Organization.class, Organization.NAME.matchesExactly().value(lga.getName()));
+//						lgas.add(lga.getName());
+//						GroupRepresentation lgaGroupRep = KeycloakTemplateHelper.lgaGroup(lga.getName(), stateGroupId, lgaId);
+//						lgaGroupId = createGroup(lgaGroupRep);
+//						updateResource(lgaGroupId, lgaId, Organization.class);
+//					}
+//
+//					if (!wards.contains(csvData[2])) {
+//						Organization ward = FhirResourceTemplateHelper.ward(csvData[0], csvData[1], csvData[2], lgaId);
+//						wardId = createResource(ward, Organization.class, Organization.NAME.matchesExactly().value(ward.getName()));
+//						wards.add(ward.getName());
+//						GroupRepresentation wardGroupRep = KeycloakTemplateHelper.wardGroup(ward.getName(), lgaGroupId, wardId);
+//						wardGroupId = createGroup(wardGroupRep);
+//						updateResource(wardGroupId, wardId, Organization.class);
+//					}
+//					if (!clinics.contains(csvData[7])) {
+//						Organization clinicOrganization = FhirResourceTemplateHelper.clinic(csvData[7], csvData[3], csvData[4], csvData[5], csvData[6], csvData[0], csvData[1], csvData[2], wardId, csvData[10]);
+//						Location clinicLocation = FhirResourceTemplateHelper.clinic(csvData[0], csvData[1], csvData[2], csvData[7], csvData[11], csvData[12], csvData[13], clinicOrganization.getIdElement().getIdPart());
+//						facilityOrganizationId = createResource(clinicOrganization, Organization.class, Organization.NAME.matchesExactly().value(clinicOrganization.getName()));
+//						facilityLocationId = createResource(clinicLocation, Location.class, Location.NAME.matchesExactly().value(clinicLocation.getName()));
+//						clinics.add(clinicOrganization.getName());
+//
+//						GroupRepresentation facilityGroupRep = KeycloakTemplateHelper.facilityGroup(
+//							clinicOrganization.getName(),
+//							wardGroupId,
+//							facilityOrganizationId,
+//							facilityLocationId,
+//							csvData[8],
+//							csvData[9],
+//							csvData[3],
+//							csvData[4],
+//							csvData[10]
+//						);
+//						facilityGroupId = createGroup(facilityGroupRep);
+//						updateResource(facilityGroupId, facilityOrganizationId, Organization.class);
+//						updateResource(facilityGroupId, facilityLocationId, Location.class);
+//					}
+//				} else {
+//					invalidClinics.add(csvData[7] + "," + csvData[0] + "," + csvData[1] + "," + csvData[2]);
+//				}
+//			}
+//		}
+//		map.put("Cannot create Clinics with state, lga, ward", invalidClinics);
+//		map.put("uploadCSV", "Successful");
+//		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
+//	}
 
-		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-		List<String> states = new ArrayList<>();
-		List<String> lgas = new ArrayList<>();
-		List<String> wards = new ArrayList<>();
-		List<String> clinics = new ArrayList<>();
-		List<String> invalidClinics = new ArrayList<>();
+//	public ResponseEntity<LinkedHashMap<String, Object>> createUsers(@RequestParam("file") MultipartFile file) throws Exception {
+//		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+//		List<String> practitioners = new ArrayList<>();
+//		List<String> invalidUsers = new ArrayList<>();
+//		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
+//		String singleLine;
+//		int iteration = 0;
+//		String practitionerRoleId = "";
+//		String practitionerId = "";
+//		String organizationId = "";
+//
+//		while ((singleLine = bufferedReader.readLine()) != null) {
+//			if (iteration == 0) { //Skip header of CSV
+//				iteration++;
+//				continue;
+//			}
+//			String hcwData[] = singleLine.split(",");
+//			organizationId = getOrganizationIdByFacilityUID(hcwData[12]);
+//			//firstName,lastName,email,countryCode,phoneNumber,gender,birthDate,keycloakUserName,initialPassword,state,lga,ward,facilityUID,role,qualification,stateIdentifier, Argusoft Identifier
+//			if (!hcwData[12].isEmpty()) {
+//				if (Validation.validationHcwCsvLine(hcwData)) {
+//					if (!(practitioners.contains(hcwData[0]) && practitioners.contains(hcwData[1]) && practitioners.contains(hcwData[4] + hcwData[3]))) {
+//						Practitioner hcw = FhirResourceTemplateHelper.hcw(hcwData[0], hcwData[1], hcwData[4], hcwData[3], hcwData[5], hcwData[6], hcwData[9], hcwData[10], hcwData[11], hcwData[12], hcwData[13], hcwData[14], hcwData[15], hcwData[16]);
+//						practitionerId = createResource(hcw,
+//							Practitioner.class,
+//							Practitioner.GIVEN.matches().value(hcw.getName().get(0).getGivenAsSingleString()),
+//							Practitioner.FAMILY.matches().value(hcw.getName().get(0).getFamily()),
+//							Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(hcwData[4] + hcwData[3]))
+//						); // Catch index out of bound
+//						practitioners.add(hcw.getName().get(0).getFamily());
+//						practitioners.add(hcw.getName().get(0).getGivenAsSingleString());
+//						practitioners.add(hcw.getTelecom().get(0).getValue());
+//						PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(hcwData[13], hcwData[14], practitionerId, organizationId);
+//						practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
+//						UserRepresentation user = KeycloakTemplateHelper.user(hcwData[0], hcwData[1], hcwData[2], hcwData[7], hcwData[8], hcwData[4], hcwData[3], practitionerId, practitionerRoleId, hcwData[13], hcwData[9], hcwData[10], hcwData[11], hcwData[12], hcwData[16], hcwData[17]);
+//						String keycloakUserId = createUser(user);
+//						RoleRepresentation role = KeycloakTemplateHelper.role(hcwData[13]);
+//						createRoleIfNotExists(role);
+//						if (keycloakUserId != null) {
+//							assignRole(keycloakUserId,role.getName());
+//							updateResource(keycloakUserId, practitionerId, Practitioner.class);
+//							updateResource(keycloakUserId, practitionerRoleId, PractitionerRole.class);
+//						}
+//					}
+//				}
+//			} else {
+//				invalidUsers.add(hcwData[0] + " " + hcwData[1] + "," + hcwData[9] + "," + hcwData[10] + "," + hcwData[11] + "," + hcwData[12]);
+//			}
+//		}
+//		map.put("Cannot create users with groups", invalidUsers);
+//		map.put("uploadCsv", "Successful");
+//		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
+//	}
 
-		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
-		String singleLine;
-		int iteration = 0;
-		String stateId = "", lgaId = "", wardId = "", facilityOrganizationId = "", facilityLocationId = "";
-		String stateGroupId = "", lgaGroupId = "", wardGroupId = "", facilityGroupId = "";
+//	public ResponseEntity<LinkedHashMap<String, Object>> createDashboardUsers(@RequestParam("file") MultipartFile file) throws Exception {
+//		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
+//		List<String> practitioners = new ArrayList<>();
+//		List<String> invalidUsers = new ArrayList<>();
+//		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
+//		String singleLine;
+//		int iteration = 0;
+//		String practitionerRoleId = "";
+//		String practitionerId = "";
+//		String organizationId = "";
+//
+//		while ((singleLine = bufferedReader.readLine()) != null) {
+//			if (iteration == 0) {
+//				iteration++;
+//				continue;
+//			}
+//			String hcwData[] = singleLine.split(",");
+//			if (!hcwData[11].isEmpty()) {
+//				organizationId = getOrganizationIdByOrganizationName(hcwData[11]);
+//				//firstName,lastName,email,phoneNumber,countryCode,gender,birthDate,keycloakUserName,facilityUID,role,initialPassword,Organization,Type
+//				Organization state = FhirResourceTemplateHelper.state(hcwData[11]);
+//				if (Validation.validationHcwCsvLine(hcwData)) {
+//					if (!(practitioners.contains(hcwData[0]) && practitioners.contains(hcwData[1]) && practitioners.contains(hcwData[3] + hcwData[4]))) {
+//						Practitioner hcw = FhirResourceTemplateHelper.user(hcwData[0], hcwData[1], hcwData[3], hcwData[4], hcwData[5], hcwData[6], hcwData[11], hcwData[6], state.getMeta().getTag().get(0).getCode());
+//						practitionerId = createResource(hcw,
+//							Practitioner.class,
+//							Practitioner.GIVEN.matches().value(hcw.getName().get(0).getGivenAsSingleString()),
+//							Practitioner.FAMILY.matches().value(hcw.getName().get(0).getFamily()),
+//							Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(hcwData[4] + hcwData[3]))
+//						);
+//						practitioners.add(hcw.getName().get(0).getFamily());
+//						practitioners.add(hcw.getName().get(0).getGivenAsSingleString());
+//						practitioners.add(hcw.getTelecom().get(0).getValue());
+//						PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(hcwData[10], "NA", practitionerId, organizationId);
+//						practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
+//						UserRepresentation user = KeycloakTemplateHelper.dashboardUser(hcwData[0], hcwData[1], hcwData[2], hcwData[7], hcwData[8], hcwData[3], hcwData[4], practitionerId, practitionerRoleId, hcwData[9], hcwData[10], hcwData[11], state.getMeta().getTag().get(0).getCode());
+//						String keycloakUserId = createUser(user);
+//						if (keycloakUserId != null) {
+//							updateResource(keycloakUserId, practitionerId, Practitioner.class);
+//							updateResource(keycloakUserId, practitionerRoleId, PractitionerRole.class);
+//						}
+//					}
+//				}
+//			} else {
+//				invalidUsers.add(hcwData[0] + " " + hcwData[1] + "," + hcwData[11]);
+//			}
+//		}
+//		map.put("Cannot create users with organization", invalidUsers);
+//		map.put("uploadCsv", "Successful");
+//		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
+//	}
 
-		while ((singleLine = bufferedReader.readLine()) != null) {
-			if (iteration == 0) { //skip header of CSV file
-				iteration++;
-				continue;
-			}
-			String[] csvData = singleLine.split(",");
-			//State(0), LGA(1), Ward(2), FacilityUID(3), FacilityCode(4), CountryCode(5), PhoneNumber(6), FacilityName(7), FacilityLevel(8), Ownership(9), Argusoft Identifier(10), Longitude(11), Latitude(12), Pluscode(13)
-			if (!csvData[3].isEmpty()) {
-				if (Validation.validateClinicAndStateCsvLine(csvData)) {
-					if (!states.contains(csvData[0])) {
-						Organization state = FhirResourceTemplateHelper.state(csvData[0]);
-						stateId = createResource(state, Organization.class, Organization.NAME.matchesExactly().value(state.getName()));
-						states.add(state.getName());
-						GroupRepresentation stateGroupRep = KeycloakTemplateHelper.stateGroup(state.getName(), stateId);
-						stateGroupId = createGroup(stateGroupRep);
-						updateResource(stateGroupId, stateId, Organization.class);
-					}
-
-					if (!lgas.contains(csvData[1])) {
-						Organization lga = FhirResourceTemplateHelper.lga(csvData[1], csvData[0], stateId);
-						lgaId = createResource(lga, Organization.class, Organization.NAME.matchesExactly().value(lga.getName()));
-						lgas.add(lga.getName());
-						GroupRepresentation lgaGroupRep = KeycloakTemplateHelper.lgaGroup(lga.getName(), stateGroupId, lgaId);
-						lgaGroupId = createGroup(lgaGroupRep);
-						updateResource(lgaGroupId, lgaId, Organization.class);
-					}
-
-					if (!wards.contains(csvData[2])) {
-						Organization ward = FhirResourceTemplateHelper.ward(csvData[0], csvData[1], csvData[2], lgaId);
-						wardId = createResource(ward, Organization.class, Organization.NAME.matchesExactly().value(ward.getName()));
-						wards.add(ward.getName());
-						GroupRepresentation wardGroupRep = KeycloakTemplateHelper.wardGroup(ward.getName(), lgaGroupId, wardId);
-						wardGroupId = createGroup(wardGroupRep);
-						updateResource(wardGroupId, wardId, Organization.class);
-					}
-					if (!clinics.contains(csvData[7])) {
-						Organization clinicOrganization = FhirResourceTemplateHelper.clinic(csvData[7], csvData[3], csvData[4], csvData[5], csvData[6], csvData[0], csvData[1], csvData[2], wardId, csvData[10]);
-						Location clinicLocation = FhirResourceTemplateHelper.clinic(csvData[0], csvData[1], csvData[2], csvData[7], csvData[11], csvData[12], csvData[13], clinicOrganization.getIdElement().getIdPart());
-						facilityOrganizationId = createResource(clinicOrganization, Organization.class, Organization.NAME.matchesExactly().value(clinicOrganization.getName()));
-						facilityLocationId = createResource(clinicLocation, Location.class, Location.NAME.matchesExactly().value(clinicLocation.getName()));
-						clinics.add(clinicOrganization.getName());
-
-						GroupRepresentation facilityGroupRep = KeycloakTemplateHelper.facilityGroup(
-							clinicOrganization.getName(),
-							wardGroupId,
-							facilityOrganizationId,
-							facilityLocationId,
-							csvData[8],
-							csvData[9],
-							csvData[3],
-							csvData[4],
-							csvData[10]
-						);
-						facilityGroupId = createGroup(facilityGroupRep);
-						updateResource(facilityGroupId, facilityOrganizationId, Organization.class);
-						updateResource(facilityGroupId, facilityLocationId, Location.class);
-					}
-				} else {
-					invalidClinics.add(csvData[7] + "," + csvData[0] + "," + csvData[1] + "," + csvData[2]);
-				}
-			}
-		}
-		map.put("Cannot create Clinics with state, lga, ward", invalidClinics);
-		map.put("uploadCSV", "Successful");
-		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
-	}
-
-	public ResponseEntity<LinkedHashMap<String, Object>> createUsers(@RequestParam("file") MultipartFile file) throws Exception {
-		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-		List<String> practitioners = new ArrayList<>();
-		List<String> invalidUsers = new ArrayList<>();
-		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
-		String singleLine;
-		int iteration = 0;
-		String practitionerRoleId = "";
-		String practitionerId = "";
-		String organizationId = "";
-
-		while ((singleLine = bufferedReader.readLine()) != null) {
-			if (iteration == 0) { //Skip header of CSV
-				iteration++;
-				continue;
-			}
-			String hcwData[] = singleLine.split(",");
-			organizationId = getOrganizationIdByFacilityUID(hcwData[12]);
-			//firstName,lastName,email,countryCode,phoneNumber,gender,birthDate,keycloakUserName,initialPassword,state,lga,ward,facilityUID,role,qualification,stateIdentifier, Argusoft Identifier
-			if (!hcwData[12].isEmpty()) {
-				if (Validation.validationHcwCsvLine(hcwData)) {
-					if (!(practitioners.contains(hcwData[0]) && practitioners.contains(hcwData[1]) && practitioners.contains(hcwData[4] + hcwData[3]))) {
-						Practitioner hcw = FhirResourceTemplateHelper.hcw(hcwData[0], hcwData[1], hcwData[4], hcwData[3], hcwData[5], hcwData[6], hcwData[9], hcwData[10], hcwData[11], hcwData[12], hcwData[13], hcwData[14], hcwData[15], hcwData[16]);
-						practitionerId = createResource(hcw,
-							Practitioner.class,
-							Practitioner.GIVEN.matches().value(hcw.getName().get(0).getGivenAsSingleString()),
-							Practitioner.FAMILY.matches().value(hcw.getName().get(0).getFamily()),
-							Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(hcwData[4] + hcwData[3]))
-						); // Catch index out of bound
-						practitioners.add(hcw.getName().get(0).getFamily());
-						practitioners.add(hcw.getName().get(0).getGivenAsSingleString());
-						practitioners.add(hcw.getTelecom().get(0).getValue());
-						PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(hcwData[13], hcwData[14], practitionerId, organizationId);
-						practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
-						UserRepresentation user = KeycloakTemplateHelper.user(hcwData[0], hcwData[1], hcwData[2], hcwData[7], hcwData[8], hcwData[4], hcwData[3], practitionerId, practitionerRoleId, hcwData[13], hcwData[9], hcwData[10], hcwData[11], hcwData[12], hcwData[16]);
-						String keycloakUserId = createUser(user);
-						RoleRepresentation role = KeycloakTemplateHelper.role(hcwData[13]);
-						createRoleIfNotExists(role);
-						if (keycloakUserId != null) {
-							assignRole(keycloakUserId,role.getName());
-							updateResource(keycloakUserId, practitionerId, Practitioner.class);
-							updateResource(keycloakUserId, practitionerRoleId, PractitionerRole.class);
-						}
-					}
-				}
-			} else {
-				invalidUsers.add(hcwData[0] + " " + hcwData[1] + "," + hcwData[9] + "," + hcwData[10] + "," + hcwData[11] + "," + hcwData[12]);
-			}
-		}
-		map.put("Cannot create users with groups", invalidUsers);
-		map.put("uploadCsv", "Successful");
-		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
-	}
-
-	public ResponseEntity<LinkedHashMap<String, Object>> createDashboardUsers(@RequestParam("file") MultipartFile file) throws Exception {
-		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-		List<String> practitioners = new ArrayList<>();
-		List<String> invalidUsers = new ArrayList<>();
-		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
-		String singleLine;
-		int iteration = 0;
-		String practitionerRoleId = "";
-		String practitionerId = "";
-		String organizationId = "";
-
-		while ((singleLine = bufferedReader.readLine()) != null) {
-			if (iteration == 0) {
-				iteration++;
-				continue;
-			}
-			String hcwData[] = singleLine.split(",");
-			if (!hcwData[11].isEmpty()) {
-				organizationId = getOrganizationIdByOrganizationName(hcwData[11]);
-				//firstName,lastName,email,phoneNumber,countryCode,gender,birthDate,keycloakUserName,facilityUID,role,initialPassword,Organization,Type
-				Organization state = FhirResourceTemplateHelper.state(hcwData[11]);
-				if (Validation.validationHcwCsvLine(hcwData)) {
-					if (!(practitioners.contains(hcwData[0]) && practitioners.contains(hcwData[1]) && practitioners.contains(hcwData[3] + hcwData[4]))) {
-						Practitioner hcw = FhirResourceTemplateHelper.user(hcwData[0], hcwData[1], hcwData[3], hcwData[4], hcwData[5], hcwData[6], hcwData[11], hcwData[6], state.getMeta().getTag().get(0).getCode());
-						practitionerId = createResource(hcw,
-							Practitioner.class,
-							Practitioner.GIVEN.matches().value(hcw.getName().get(0).getGivenAsSingleString()),
-							Practitioner.FAMILY.matches().value(hcw.getName().get(0).getFamily()),
-							Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(), Arrays.asList(hcwData[4] + hcwData[3]))
-						);
-						practitioners.add(hcw.getName().get(0).getFamily());
-						practitioners.add(hcw.getName().get(0).getGivenAsSingleString());
-						practitioners.add(hcw.getTelecom().get(0).getValue());
-						PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(hcwData[10], "NA", practitionerId, organizationId);
-						practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
-						UserRepresentation user = KeycloakTemplateHelper.dashboardUser(hcwData[0], hcwData[1], hcwData[2], hcwData[7], hcwData[8], hcwData[3], hcwData[4], practitionerId, practitionerRoleId, hcwData[9], hcwData[10], hcwData[11], state.getMeta().getTag().get(0).getCode());
-						String keycloakUserId = createUser(user);
-						if (keycloakUserId != null) {
-							updateResource(keycloakUserId, practitionerId, Practitioner.class);
-							updateResource(keycloakUserId, practitionerRoleId, PractitionerRole.class);
-						}
-					}
-				}
-			} else {
-				invalidUsers.add(hcwData[0] + " " + hcwData[1] + "," + hcwData[11]);
-			}
-		}
-		map.put("Cannot create users with organization", invalidUsers);
-		map.put("uploadCsv", "Successful");
-		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
-	}
-
-	public List<GroupRepresentation> getGroupsByUser(String userId) {
-		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
-		List<GroupRepresentation> groups = realmResource.users().get(userId).groups(0, appProperties.getKeycloak_max_group_count(), false);
-		return groups;
-	}
+//	public List<GroupRepresentation> getGroupsByUser(String userId) {
+//		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+//		List<GroupRepresentation> groups = realmResource.users().get(userId).groups(0, appProperties.getKeycloak_max_group_count(), false);
+//		return groups;
+//	}
 
 //	public ResponseEntity<List<Map<String, String>>> getAncMetaDataByOrganizationId(String organizationId, String startDate, String endDate) {
 //		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
@@ -306,25 +310,25 @@ public class ChartService {
 //			return ResponseEntity.ok("Error : Config File Not Found");
 //		}
 //	}
-	public void saveInAsyncTable(DataResult dataResult, String id) {
-
-		byte[] summaryResult = dataResult.getSummaryResult();
-		List<Map<String, String>> dailyResult = dataResult.getDailyResult();
-		String base64SummaryResult = Base64.getEncoder().encodeToString(summaryResult);
-		String dailyResultJsonString = new Gson().toJson(dailyResult); // SPlit into two , one arraylist and one base64Encoded string.
-
-		try {
-			ArrayList asyncData = datasource.fetchStatus(id);
-			ApiAsyncTaskEntity asyncRecord = (ApiAsyncTaskEntity) asyncData.get(0);
-			asyncRecord.setStatus(ApiAsyncTaskEntity.Status.COMPLETED.name());
-			asyncRecord.setDailyResult(ClobProxy.generateProxy(dailyResultJsonString));
-			asyncRecord.setSummaryResult(ClobProxy.generateProxy(base64SummaryResult));
-			datasource.update(asyncRecord);
-		} catch (Exception e) {
-			logger.warn(ExceptionUtils.getStackTrace(e));
-		}
-
-	}
+//	public void saveInAsyncTable(DataResult dataResult, String id) {
+//
+//		byte[] summaryResult = dataResult.getSummaryResult();
+//		List<Map<String, String>> dailyResult = dataResult.getDailyResult();
+//		String base64SummaryResult = Base64.getEncoder().encodeToString(summaryResult);
+//		String dailyResultJsonString = new Gson().toJson(dailyResult); // SPlit into two , one arraylist and one base64Encoded string.
+//
+//		try {
+//			ArrayList asyncData = datasource.fetchStatus(id);
+//			ApiAsyncTaskEntity asyncRecord = (ApiAsyncTaskEntity) asyncData.get(0);
+//			asyncRecord.setStatus(ApiAsyncTaskEntity.Status.COMPLETED.name());
+//			asyncRecord.setDailyResult(ClobProxy.generateProxy(dailyResultJsonString));
+//			asyncRecord.setSummaryResult(ClobProxy.generateProxy(base64SummaryResult));
+//			datasource.update(asyncRecord);
+//		} catch (Exception e) {
+//			logger.warn(ExceptionUtils.getStackTrace(e));
+//		}
+//
+//	}
 
 
 	public String convertClobToString (Clob input) throws  IOException, SQLException{

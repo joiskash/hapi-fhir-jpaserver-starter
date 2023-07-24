@@ -59,7 +59,7 @@ public class FhirResourceTemplateHelper {
 		country.setId(new IdType("Organization", generateUUID()));
 		return country;
 	}
-	public static Organization state(String name)
+	public static Organization state(String name, String country, String countryId)
 	{
 		Organization state = new Organization();
 		state.setMeta(getMetaByOrgType(OrgType.STATE));
@@ -81,6 +81,7 @@ public class FhirResourceTemplateHelper {
 		state.setType(codeableConcepts);
 		state.setName(name);
 		state.setId(new IdType("Organization", generateUUID()));
+		state.setPartOf(new Reference("Organization/" + countryId));
 		return state;
 	}
 	

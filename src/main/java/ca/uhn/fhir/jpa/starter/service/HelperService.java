@@ -284,8 +284,8 @@ public class HelperService {
 					continue;
 				}
 
-				Organization state = FhirResourceTemplateHelper.state(stateName);
-				GroupRepresentation stateGroupRep = KeycloakTemplateHelper.stateGroup(state.getName(), state.getIdElement().getIdPart());
+				Organization state = FhirResourceTemplateHelper.state(stateName, countryName, countryId);
+				GroupRepresentation stateGroupRep = KeycloakTemplateHelper.stateGroup(state.getName(), countryGroupId,state.getIdElement().getIdPart());
 				stateGroupId = createKeycloakGroup(stateGroupRep);
 				if (stateGroupId == null) {
 					invalidClinics.add("Group creation failed for state: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
@@ -391,6 +391,7 @@ public class HelperService {
 			String qualification = hcwData[14];
 			String stateIdentifier = hcwData[15];
 			String argusoftIdentifier = hcwData[16];
+			String countryName = hcwData[17];
 			organizationId = getOrganizationIdByFacilityUID(facilityUID);
 
 			String s = firstName + "," + lastName + "," + state + "," + lga + "," + ward + "," + facilityUID;
@@ -416,7 +417,7 @@ public class HelperService {
 				practitioners.add(practitioner.getTelecom().get(0).getValue());
 				PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(role, qualification, practitioner.getIdElement().getIdPart(), organizationId);
 //				practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
-				UserRepresentation user = KeycloakTemplateHelper.user(firstName, lastName, email, keycloakUserName, initialPassword, phoneNumber, countryCode, practitioner.getIdElement().getIdPart(), practitionerRole.getIdElement().getIdPart(), role, state, lga, ward, facilityUID, argusoftIdentifier);
+				UserRepresentation user = KeycloakTemplateHelper.user(firstName, lastName, email, keycloakUserName, initialPassword, phoneNumber, countryCode, practitioner.getIdElement().getIdPart(), practitionerRole.getIdElement().getIdPart(), role, state, lga, ward, facilityUID, argusoftIdentifier, countryName);
 				String keycloakUserId = createKeycloakUser(user);
 				if (keycloakUserId == null) {
 					map.put("User not created", s);
