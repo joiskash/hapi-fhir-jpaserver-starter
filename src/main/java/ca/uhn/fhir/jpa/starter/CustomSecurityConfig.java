@@ -1,8 +1,7 @@
 package ca.uhn.fhir.jpa.starter;
 
 
-import java.util.Arrays;
-
+import interceptor.SignatureInterceptor;
 import org.hibernate.annotations.common.util.impl.LoggerFactory;
 import org.keycloak.adapters.KeycloakConfigResolver;
 import org.keycloak.adapters.springboot.KeycloakSpringBootConfigResolver;
@@ -13,6 +12,7 @@ import org.keycloak.adapters.springsecurity.client.KeycloakRestTemplate;
 import org.keycloak.adapters.springsecurity.config.KeycloakWebSecurityConfigurerAdapter;
 import org.keycloak.adapters.springsecurity.filter.KeycloakAuthenticationProcessingFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.HttpMethod;
@@ -21,20 +21,16 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import org.springframework.security.core.authority.mapping.SimpleAuthorityMapper;
 import org.springframework.security.core.session.SessionRegistryImpl;
+import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import interceptor.SignatureInterceptor;
+import java.util.Arrays;
 
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import static org.springframework.http.HttpMethod.DELETE;
-import static org.springframework.http.HttpMethod.GET;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpMethod.PUT;
+import static org.springframework.http.HttpMethod.*;
 
 //@ConditionalOnProperty(prefix = "keycloak", name = "enabled", havingValue = "true", matchIfMissing = true)
 @KeycloakConfiguration
@@ -98,11 +94,11 @@ public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
                 .permitAll()
                 .mvcMatchers("/logout.do")
                 .permitAll()
-                .antMatchers("/fhir/**","/iprd/**")
+                .antMatchers("/fhir/**","/iprd/**","/iprdWeb/**")
                 .authenticated()
                 .and()
                 .csrf()
-                .ignoringAntMatchers("/fhir/**", "/iprd/**")
+                .ignoringAntMatchers("/fhir/**", "/iprd/**","/iprdWeb/**")
                 .and()
                 .logout()
                 .logoutRequestMatcher(new AntPathRequestMatcher("logout.do", "GET"));
