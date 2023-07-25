@@ -18,7 +18,7 @@ public class Validation {
 	}
 	
 	public static boolean validationHcwCsvLine(String[] hcwCsvData) {
-		return hcwCsvData.length == 17;
+		return hcwCsvData.length == 18;
 	}
 
 	public static boolean validationDashboardUserCsvLine(String[] hcwCsvData) {

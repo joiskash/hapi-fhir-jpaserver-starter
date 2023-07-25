@@ -501,7 +501,6 @@ public class HelperService {
 				invalidUsers.add("Practitioner already exists: " + firstName + "," + lastName + "," + userName + "," + email );
 				continue;
 			}
-
 			Practitioner practitioner = FhirResourceTemplateHelper.user(firstName, lastName, phoneNumber, countryCode, gender, birthDate, organizationName, facilityUID, type.toLowerCase());
 			practitioners.add(practitioner.getName().get(0).getFamily());
 			practitioners.add(practitioner.getName().get(0).getGivenAsSingleString());
@@ -528,6 +527,9 @@ public class HelperService {
 				invalidUsers.add("Failed to create user: " + firstName + " " + lastName + "," + userName + "," + email);
 				continue;
 			}
+			RoleRepresentation KeycloakRoleRepresentation = KeycloakTemplateHelper.role(role);
+			createRoleIfNotExists(KeycloakRoleRepresentation);
+			assignRole(keycloakUserId, KeycloakRoleRepresentation.getName());
 			practitionerId = createResource(
 				keycloakUserId,
 				practitioner,
