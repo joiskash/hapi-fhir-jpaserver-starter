@@ -66,6 +66,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.Future;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -1773,7 +1774,19 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 						organizationResource.setAddress(addresses);
 						ContactPoint contactPoint = new ContactPoint();
 						contactPoint.setValue(countryCode+phoneNumber);
-						organizationResource.addTelecom(contactPoint);
+						List <ContactPoint> listOfContacts = organizationResource.getTelecom();
+						boolean contactExists = false;
+						for (ContactPoint existinContact : listOfContacts) {
+							if (existinContact.getValue().equals(contactPoint.getValue())) {
+								contactExists = true;
+								break;
+							}
+						}
+						if (!contactExists) {
+							List <ContactPoint> distinctListOfContacts = listOfContacts.stream().collect(Collectors.toMap(ContactPoint::getValue, Function.identity(), (existing, replacement) -> existing)).values().stream().collect(Collectors.toList());
+							distinctListOfContacts.add(contactPoint);
+							organizationResource.setTelecom(distinctListOfContacts);
+						}
 					}else{
 						locationResource.setName(facilityName);
 						Address address = new Address();
@@ -1792,7 +1805,19 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 								pluscodeExtension.setUrl("http://iprdgroup.org/fhir/Extention/location-plus-code");
 								StringType pluscodeValue = new StringType(pluscode);
 								pluscodeExtension.setValue(pluscodeValue);
-								locationResource.addExtension(pluscodeExtension);
+								List <Extension> listOfExtension = locationResource.getExtension();
+								boolean extensionExists = false;
+								for (Extension existingExtension : listOfExtension) {
+									if (existingExtension.getUrl().equals(pluscodeExtension.getUrl())) {
+										existingExtension.setValue(pluscodeValue);
+										extensionExists = true;
+										break;
+									}
+								}
+								if (!extensionExists) {
+//									List <Extension> uniquelistOfExtension = locationResource.getExtension();
+									locationResource.addExtension(pluscodeExtension);
+								}
 							}
 						}
 					}
