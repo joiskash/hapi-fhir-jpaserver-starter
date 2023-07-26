@@ -97,14 +97,16 @@ public class HelperService {
 	Map <String,DashboardConfigContainer> dashboardEnvToConfigMap = new HashMap<>();
 
 	private static final Logger logger = LoggerFactory.getLogger(HelperService.class);
-	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
-	private static String SMS_EXTENTION_URL = "http://iprdgroup.com/Extentions/sms-sent";
 	private static final long INITIAL_DELAY = 5 * 30000L;
 	private static final long FIXED_DELAY = 5 * 60000L;
 
 	private static final long AUTH_INITIAL_DELAY = 25 * 60000L;
 	private static final long AUTH_FIXED_DELAY = 50 * 60000L;
 	private static final long DELAY = 2 * 60000;
+	// todo - change the URLs below once resources are updated as per Implementation Guide
+	private static  String EXTENSION_PLUSCODE_URL = "http://iprdgroup.org/fhir/Extention/location-plus-code";
+	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
+	private static String SMS_EXTENTION_URL = "http://iprdgroup.com/Extentions/sms-sent";
 
 	NotificationDataSource notificationDataSource;
 	LinkedHashMap<String,Pair<List<String>, LinkedHashMap<String, List<String>>>> mapOfIdsAndOrgIdToChildrenMapPair;
@@ -148,13 +150,14 @@ public class HelperService {
 		mapOfOrgHierarchy.put(orgId, ReportGeneratorFactory.INSTANCE.reportGenerator().getOrganizationHierarchy(fhirClientProvider, orgId));
 	}
 
-	private String getKeycloakGroupId(String uid) {
+	private String getKeycloakGroupId(String groupName) {
 		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
 		try {
-			if (realmResource.groups().groups(uid, 0, Integer.MAX_VALUE, false).size() == 0){
+			List<GroupRepresentation> groups = realmResource.groups().groups(groupName, 0, Integer.MAX_VALUE, false);
+			if (groups.size() == 0){
 				return null;
 			}
-			return realmResource.groups().groups(uid, 0, Integer.MAX_VALUE, false).get(0).getId();
+			return groups.get(0).getId();
 		}
 		catch (Exception e) {
 			logger.warn(ExceptionUtils.getStackTrace(e));
@@ -162,7 +165,7 @@ public class HelperService {
 		return null;
 	}
 
-	//Recursive function below. Therefore, keeping counter to identify the depth of hierarchy and update the corresponding group type.
+	//Recursive function below. Therefore, keeping counter to identify the depth of hierarchy and update the corresponding group type. 0->facility, 1->ward, 2->lga, 3->state, 4->country
 	private String updateKeycloakGroupAndResource(String[] updatedDetails, String groupId, int counter) {
 
 		//State(0), LGA(1), Ward(2), FacilityUID(3), FacilityCode(4), CountryCode(5), PhoneNumber(6), FacilityName(7), FacilityLevel(8), Ownership(9), Argusoft Identifier(10), Longitude(11), Latitude(12), Pluscode(13)
@@ -1716,11 +1719,13 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			if (resourceClass.equals(Organization.class)){
 				groupResource = realmResource.groups().group(keycloakId);
 				group = groupResource.toRepresentation();
-				existingResource = FhirClientAuthenticatorService.getFhirClient().read().resource(resourceClass).withId(group.getAttributes().get("organization_id").get(0)).execute();
+				String orgId = group.getAttributes().get("organization_id").get(0);
+				existingResource = FhirClientAuthenticatorService.getFhirClient().read().resource(resourceClass).withId(orgId).execute();
 			} else if (resourceClass.equals(Location.class)) {
 				groupResource = realmResource.groups().group(keycloakId);
 				group = groupResource.toRepresentation();
-				existingResource = FhirClientAuthenticatorService.getFhirClient().read().resource(resourceClass).withId(group.getAttributes().get("location_id").get(0)).execute();
+				String locId = group.getAttributes().get("location_id").get(0);
+				existingResource = FhirClientAuthenticatorService.getFhirClient().read().resource(resourceClass).withId(locId).execute();
 			}
 		} catch (ResourceNotFoundException e) {
 			logger.warn("RESOURCE NOT FOUND");
@@ -1794,31 +1799,45 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 						address.setDistrict(lgaName);
 						address.setCity(wardName);
 						locationResource.setAddress(address);
-						LocationPositionComponent oldPosition = locationResource.getPosition();
-						if (!latitude.equals("null") && !longitude.equals("null")){
-							LocationPositionComponent position = new LocationPositionComponent();
-							position.setLongitude(Double.parseDouble(longitude));
-							position.setLatitude(Double.parseDouble(latitude));
-							if(!(oldPosition.getLatitudeElement().equals(position.getLatitudeElement()) && !oldPosition.getLongitudeElement().equals(position.getLongitudeElement()))) {
-								locationResource.setPosition(position);
-								Extension pluscodeExtension = new Extension();
-								pluscodeExtension.setUrl("http://iprdgroup.org/fhir/Extention/location-plus-code");
-								StringType pluscodeValue = new StringType(pluscode);
-								pluscodeExtension.setValue(pluscodeValue);
-								List <Extension> listOfExtension = locationResource.getExtension();
-								boolean extensionExists = false;
-								for (Extension existingExtension : listOfExtension) {
-									if (existingExtension.getUrl().equals(pluscodeExtension.getUrl())) {
-										existingExtension.setValue(pluscodeValue);
-										extensionExists = true;
-										break;
+						boolean positionPresent = locationResource.hasPosition();
+						try{
+							if(positionPresent) {
+								LocationPositionComponent oldPosition = locationResource.getPosition();
+								LocationPositionComponent newPosition = new LocationPositionComponent();
+								newPosition.setLongitude(Double.parseDouble(longitude));
+								newPosition.setLatitude(Double.parseDouble(latitude));
+								if (!(oldPosition.getLatitudeElement().equals(newPosition.getLatitudeElement()) && !oldPosition.getLongitudeElement().equals(newPosition.getLongitudeElement()))) {
+									locationResource.setPosition(newPosition);
+									Extension pluscodeExtension = new Extension();
+									pluscodeExtension.setUrl(EXTENSION_PLUSCODE_URL);
+									StringType pluscodeValue = new StringType(pluscode);
+									pluscodeExtension.setValue(pluscodeValue);
+									List<Extension> listOfExtension = locationResource.getExtension();
+									boolean extensionExists = false;
+									for (Extension existingExtension : listOfExtension) {
+										if (existingExtension.getUrl().equals(pluscodeExtension.getUrl())) {
+											existingExtension.setValue(pluscodeValue);
+											extensionExists = true;
+											break;
+										}
+									}
+									if (!extensionExists) {
+										locationResource.addExtension(pluscodeExtension);
 									}
 								}
-								if (!extensionExists) {
-//									List <Extension> uniquelistOfExtension = locationResource.getExtension();
-									locationResource.addExtension(pluscodeExtension);
-								}
+							}else{
+								LocationPositionComponent position = new LocationPositionComponent();
+								position.setLongitude(Double.parseDouble(longitude));
+								position.setLatitude(Double.parseDouble(latitude));
+								locationResource.setPosition(position);
+								Extension pluscodeExtension = new Extension();
+								pluscodeExtension.setUrl(EXTENSION_PLUSCODE_URL);
+								StringType pluscodeValue = new StringType(pluscode);
+								pluscodeExtension.setValue(pluscodeValue);
+								locationResource.addExtension(pluscodeExtension);
 							}
+						}catch (Exception e){
+							logger.warn("The provided updated latitude or longitude value is non-numeric");
 						}
 					}
 					break;

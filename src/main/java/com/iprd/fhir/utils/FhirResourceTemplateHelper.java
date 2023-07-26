@@ -25,25 +25,22 @@ public class FhirResourceTemplateHelper {
 	private static String SYSTEM_LOCATION_PHYSICAL_TYPE = "http://hl7.org/fhir/ValueSet/location-physical-type";
 	private static String CODE_CLINIC = "prov";
 	private static String DISPLAY_CLINIC = "Healthcare Provider";
+	private static String CODE_GOVT = "govt";
+	private static String DISPLAY_GOVERNMENT = "Government";
 	private static String SYSTEM_ORGANIZATION_PHYSICAL_TYPE = "	http://hl7.org/fhir/ValueSet/organization-type";
+	// todo - change the URLs below once resources are updated as per Implementation Guide
 	private static String SYSTEM_HCW = "https://www.iprdgroup.com/nigeria/oyo/ValueSet/Roles";
 	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
 	private static String SYSTEM_ORG_TYPE = "https://www.iprdgroup.com/ValueSet/OrganizationType/tags";
-	private static String CODE_GOVT = "govt";
-	private static String DISPLAY_GOVERNMENT = "Government";
+	private static  String EXTENSION_PLUSCODE_URL = "http://iprdgroup.org/fhir/Extention/location-plus-code";
+
 
 	private static final Logger logger = LoggerFactory.getLogger(FhirResourceTemplateHelper.class);
 	
 	public static Organization country(String name)
 	{
 		Organization country = new Organization();
-		Meta meta = new Meta();
-		Coding coding = new Coding();
-		coding.setSystem(SYSTEM_ORG_TYPE);
-		coding.setCode("country");
-		coding.setDisplay("COUNTRY");
-		meta.addTag(coding);
-		country.setMeta(meta);
+		country.setMeta(getMetaByOrgType(OrgType.COUNTRY));
 		List<CodeableConcept> codeableConcepts = new ArrayList<>();
 		CodeableConcept countryPhysicalType = new CodeableConcept();
 		Coding physicalTypeCoding = new Coding();
@@ -157,16 +154,18 @@ public class FhirResourceTemplateHelper {
 		facility.setStatus(LocationStatus.ACTIVE);
 		facility.setMode(LocationMode.INSTANCE);
 		facility.setPhysicalType(facilityPhysicalType);
-		if (!latitude.equals("null") && !longitude.equals("null")){
+		try{
 			Location.LocationPositionComponent position = new Location.LocationPositionComponent();
 			position.setLongitude(Double.parseDouble(longitude));
 			position.setLatitude(Double.parseDouble(latitude));
 			facility.setPosition(position);
 			Extension pluscodeExtension = new Extension();
-			pluscodeExtension.setUrl("http://iprdgroup.org/fhir/Extention/location-plus-code");
+			pluscodeExtension.setUrl(EXTENSION_PLUSCODE_URL);
 			StringType pluscodeValue = new StringType(pluscode);
 			pluscodeExtension.setValue(pluscodeValue);
 			facility.addExtension(pluscodeExtension);
+		}catch (Exception e){
+			logger.warn("The provided latitude or longitude value is non-numeric. Clinic Details - ", clinic, district, city, state);
 		}
 		Reference organizationRef = new Reference();
 		organizationRef.setReference("Organization/"+organizationReference);
