@@ -1,10 +1,7 @@
 package ca.uhn.fhir.jpa.starter.service;
 
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.jpa.starter.AppProperties;
-import ca.uhn.fhir.jpa.starter.AsyncConfiguration;
-import ca.uhn.fhir.jpa.starter.DashboardConfigContainer;
-import ca.uhn.fhir.jpa.starter.DashboardEnvironmentConfig;
+import ca.uhn.fhir.jpa.starter.*;
 import ca.uhn.fhir.jpa.starter.model.*;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
@@ -24,6 +21,7 @@ import com.iprd.report.model.definition.*;
 
 import android.util.Pair;
 
+import java.awt.image.BufferedImage;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -32,6 +30,9 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.Clob;
 import java.sql.Date;
 import java.sql.SQLException;
@@ -41,12 +42,17 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import javax.annotation.PostConstruct;
+import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
 import com.iprd.report.model.definition.BarComponent;
 import com.iprd.report.model.definition.LineChart;
+import me.desair.tus.server.TusFileUploadService;
+import me.desair.tus.server.exception.TusException;
+import me.desair.tus.server.upload.UploadId;
+import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.hibernate.engine.jdbc.ClobProxy;
@@ -99,7 +105,8 @@ public class HelperService {
 	DashboardEnvironmentConfig dashboardEnvironmentConfig;
 	@Autowired
 	AsyncConfiguration asyncConf;
-	
+	@Autowired
+	TusServerProperties tusServerProperties;
 	FhirContext ctx;
 	Keycloak instance;
 	TokenManager tokenManager;
@@ -1668,6 +1675,80 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		}
 		return false;
 
+	}
+
+	public void getBytesAndSaveImage(TusFileUploadService tusFileUploadService, String uploadUrl) throws TusException, IOException {
+		List<String> subDirectories = getSubDirectories(appProperties.getImage_path() + File.separator + "uploads");
+		if (!subDirectories.isEmpty()) {
+			for (String subDirectory : subDirectories) {
+				try {
+					InputStream inputStream = tusFileUploadService.getUploadedBytes(uploadUrl);
+					String fileName = new String(org.apache.commons.codec.binary.Base64.decodeBase64(tusFileUploadService.getUploadInfo(uploadUrl).getEncodedMetadata().split(" ")[1]), Charsets.UTF_8);
+
+					// Use ByteArrayOutputStream to collect all the bytes from the InputStream.
+					ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+					// Define a buffer to read data in chunks.
+					byte[] buffer = new byte[1024]; // You can adjust the buffer size as per your requirement.
+
+					int bytesRead;
+					while ((bytesRead = inputStream.read(buffer)) != -1) {
+						// Write the bytesRead number of bytes to the ByteArrayOutputStream.
+						byteArrayOutputStream.write(buffer, 0, bytesRead);
+					}
+
+					// Close the InputStream and ByteArrayOutputStream when done reading.
+					inputStream.close();
+					byteArrayOutputStream.close();
+
+					// Get the complete byte array from the ByteArrayOutputStream.
+					byte[] completeByteArray = byteArrayOutputStream.toByteArray();
+					BufferedImage image = byteArrayToBufferedImage(completeByteArray);
+					saveImageToFile(image, appProperties.getImage_path(), fileName);
+					tusFileUploadService.deleteUpload(uploadUrl);
+				} catch (FileNotFoundException e) {
+					// Handle the FileNotFoundException here, e.g., log an error or take appropriate action.
+					// You can also throw a custom exception if needed.
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+
+	public static List<String> getSubDirectories(String directoryPath) {
+		List<String> subDirectories = new ArrayList<>();
+
+		File rootDirectory = new File(directoryPath);
+		if (rootDirectory.exists() && rootDirectory.isDirectory()) {
+			File[] files = rootDirectory.listFiles();
+			if (files != null) {
+				for (File file : files) {
+					if (file.isDirectory()) {
+						subDirectories.add(file.getName());
+					}
+				}
+			}
+		}
+		return subDirectories;
+	}
+
+	private static BufferedImage byteArrayToBufferedImage(byte[] byteArrayData) throws IOException {
+		ByteArrayInputStream inputStream = new ByteArrayInputStream(byteArrayData);
+		return ImageIO.read(inputStream);
+	}
+
+	private static void saveImageToFile(BufferedImage image, String folderPath, String fileName) throws IOException {
+		Path outputPath = Paths.get(folderPath, fileName);
+		File outputFile = outputPath.toFile();
+
+		// Create parent directories if they don't exist
+		Files.createDirectories(outputPath.getParent());
+		if(outputFile.exists()){
+			System.out.println("File already exists with the name" + fileName);
+		}else{
+			if (image != null)
+				ImageIO.write(image, "jpeg", outputFile);
+		}
 	}
 
 	private void assignRole(String userId, String roleName) {
