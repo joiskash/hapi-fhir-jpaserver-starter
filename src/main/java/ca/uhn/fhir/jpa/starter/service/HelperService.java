@@ -212,7 +212,7 @@ public class HelperService {
 				if (type.equals("state") && oldName.contentEquals(stateName)) return null;
 				if (type.equals("lga") && oldName.contentEquals(lgaName)) return null;
 				if (type.equals("ward") && oldName.contentEquals(wardName)) return null;
-				group.setName(counter == 1 ? wardName : lgaName);
+				group.setName(counter == 3 ? stateName : counter == 1 ? wardName : lgaName);
 				groupResource.update(group);
 				updateResource(orgId, Organization.class, updatedDetails, counter);
 			}
