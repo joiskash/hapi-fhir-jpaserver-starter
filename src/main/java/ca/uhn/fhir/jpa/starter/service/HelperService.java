@@ -8,7 +8,6 @@ import ca.uhn.fhir.rest.client.impl.GenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 import ca.uhn.fhir.rest.gclient.ICriterion;
 import ca.uhn.fhir.rest.gclient.IQuery;
-
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.gson.Gson;
@@ -18,10 +17,7 @@ import com.iprd.report.model.FilterItem;
 import com.iprd.report.model.FilterOptions;
 import com.iprd.report.model.data.*;
 import com.iprd.report.model.definition.*;
-
 import android.util.Pair;
-
-import java.awt.image.BufferedImage;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -30,9 +26,6 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.Clob;
 import java.sql.Date;
 import java.sql.SQLException;
@@ -40,19 +33,12 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-
 import javax.annotation.PostConstruct;
-import javax.imageio.ImageIO;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
-
 import com.iprd.report.model.definition.BarComponent;
 import com.iprd.report.model.definition.LineChart;
-import me.desair.tus.server.TusFileUploadService;
-import me.desair.tus.server.exception.TusException;
-import me.desair.tus.server.upload.UploadId;
-import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.hibernate.engine.jdbc.ClobProxy;
