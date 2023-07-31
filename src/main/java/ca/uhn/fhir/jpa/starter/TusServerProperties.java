@@ -9,9 +9,9 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "tus-server")
 public class TusServerProperties {
 
+	//final storage file directory
 	private String fileDirectory;
 
-	private Long maxSize;
-
+	//upload url
 	private String contextPath;
 }

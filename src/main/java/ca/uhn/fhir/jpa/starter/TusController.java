@@ -4,10 +4,9 @@ package ca.uhn.fhir.jpa.starter;
 import java.io.IOException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import ca.uhn.fhir.jpa.starter.service.HelperService;
+import ca.uhn.fhir.jpa.starter.service.TusService;
 import me.desair.tus.server.TusFileUploadService;
 import me.desair.tus.server.exception.TusException;
-import org.hl7.fhir.r4.model.Bundle;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +25,7 @@ public class TusController {
 	private TusFileUploadService tusFileUploadService;
 
 	@Autowired
-	HelperService helperService;
+	TusService tusService;
 
 	@RequestMapping(value = {"", "/**"}, method = {RequestMethod.POST, RequestMethod.PATCH, RequestMethod.HEAD,
 		RequestMethod.DELETE, RequestMethod.OPTIONS, RequestMethod.GET})
@@ -39,7 +38,7 @@ public class TusController {
 	@RequestMapping(method = RequestMethod.POST, value = "/getBytesTus")
 	public ResponseEntity<String> getBytesAndSaveImages(@RequestParam("uploadUrl") String uploadUrl) {
 		try {
-			helperService.getBytesAndSaveImage(tusFileUploadService, uploadUrl);
+			tusService.getBytesAndSaveImage(tusFileUploadService, uploadUrl);
 			return ResponseEntity.ok("Images uploaded and saved successfully.");
 		} catch (TusException | IOException e) {
 			e.printStackTrace();
