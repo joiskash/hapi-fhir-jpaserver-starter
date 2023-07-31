@@ -1,8 +1,8 @@
 version: "3"
 services:
   hapi-fhir-jpaserver-start:
-    image: hapi-fhir-jpaserver-starter-hapi-fhir-jpaserver-start:latest
-    container_name: hapi-fhir-server
+    build: .
+    container_name: hapi-fhir-jpaserver-start
     volumes:
       - ./data/hapi:/data/hapi
       - ./submodules/hapi-fhir-jpaserver-starter/images:/app/images
