@@ -30,48 +30,53 @@ public class TusService {
 	@Autowired
 	private TusFileUploadService tusFileUploadService;
 	public void getBytesAndSaveImage(TusFileUploadService tusFileUploadService, String uploadUrl) throws TusException, IOException {
-		transferImagesToFinalStorage();
+		List<String> subDirectories = getSubDirectories(appProperties.getImage_path() + File.separator + "uploads");
+		if (!subDirectories.isEmpty()) {
+			for (String subDirectory : subDirectories) {
+				transferImagesToFinalStorage(uploadUrl);
+			}
+		}
 	}
 
 	@Scheduled(fixedDelay = FIXED_DELAY)
 	private void transferImageToFinalStorageScheduler() throws TusException, IOException{
-		transferImagesToFinalStorage();
-	}
-
-	private void transferImagesToFinalStorage() throws TusException, IOException{
 		List<String> subDirectories = getSubDirectories(appProperties.getImage_path() + File.separator + "uploads");
 		if(!subDirectories.isEmpty()){
 			for (String subDirectory: subDirectories){
-				try{
-					String uploadUrl = tusServerProperties.getContextPath() + "/" + subDirectory;
-					InputStream inputStream = tusFileUploadService.getUploadedBytes(uploadUrl);
-					String fileName = new String(org.apache.commons.codec.binary.Base64.decodeBase64(tusFileUploadService.getUploadInfo(uploadUrl).getEncodedMetadata().split(" ")[1]), Charsets.UTF_8);
-
-					// Use ByteArrayOutputStream to collect all the bytes from the InputStream.
-					ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-
-					// Define a buffer to read data in chunks.
-					byte[] buffer = new byte[1024]; // You can adjust the buffer size as per your requirement.
-
-					int bytesRead;
-					while ((bytesRead = inputStream.read(buffer)) != -1) {
-						// Write the bytesRead number of bytes to the ByteArrayOutputStream.
-						byteArrayOutputStream.write(buffer, 0, bytesRead);
-					}
-
-					// Close the InputStream and ByteArrayOutputStream when done reading.
-					inputStream.close();
-					byteArrayOutputStream.close();
-
-					// Get the complete byte array from the ByteArrayOutputStream.
-					byte[] completeByteArray = byteArrayOutputStream.toByteArray();
-					BufferedImage image = byteArrayToBufferedImage(completeByteArray);
-					saveImageToFile(image, appProperties.getImage_path(), fileName);
-					tusFileUploadService.deleteUpload(uploadUrl);
-				} catch (FileNotFoundException e){
-					e.printStackTrace();
-				}
+				String uploadUrl = tusServerProperties.getContextPath() + "/" + subDirectory;
+				transferImagesToFinalStorage(uploadUrl);
 			}
+		}
+	}
+
+	private void transferImagesToFinalStorage(String uploadUrl) throws TusException, IOException{
+		try{
+			InputStream inputStream = tusFileUploadService.getUploadedBytes(uploadUrl);
+			String fileName = new String(org.apache.commons.codec.binary.Base64.decodeBase64(tusFileUploadService.getUploadInfo(uploadUrl).getEncodedMetadata().split(" ")[1]), Charsets.UTF_8);
+
+			// Use ByteArrayOutputStream to collect all the bytes from the InputStream.
+			ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+
+			// Define a buffer to read data in chunks.
+			byte[] buffer = new byte[1024]; // You can adjust the buffer size as per your requirement.
+
+			int bytesRead;
+			while ((bytesRead = inputStream.read(buffer)) != -1) {
+				// Write the bytesRead number of bytes to the ByteArrayOutputStream.
+				byteArrayOutputStream.write(buffer, 0, bytesRead);
+			}
+
+			// Close the InputStream and ByteArrayOutputStream when done reading.
+			inputStream.close();
+			byteArrayOutputStream.close();
+
+			// Get the complete byte array from the ByteArrayOutputStream.
+			byte[] completeByteArray = byteArrayOutputStream.toByteArray();
+			BufferedImage image = byteArrayToBufferedImage(completeByteArray);
+			saveImageToFile(image, appProperties.getImage_path(), fileName);
+			tusFileUploadService.deleteUpload(uploadUrl);
+		} catch (FileNotFoundException e){
+			e.printStackTrace();
 		}
 	}
 
