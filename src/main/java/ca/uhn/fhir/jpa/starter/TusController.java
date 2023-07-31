@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @Controller
 @RequestMapping(value = "/api/upload")
 //access Cross
-@CrossOrigin(origins = "*")
+@CrossOrigin(origins = {"http://localhost:3000/", "http://testhost.dashboard:3000/", "https://oclink.io/", "https://opencampaignlink.org/"}, maxAge = 3600, allowCredentials = "true")
 public class TusController {
 	@Autowired
 	private TusFileUploadService tusFileUploadService;
