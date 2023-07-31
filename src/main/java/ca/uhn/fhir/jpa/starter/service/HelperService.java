@@ -105,8 +105,6 @@ public class HelperService {
 	DashboardEnvironmentConfig dashboardEnvironmentConfig;
 	@Autowired
 	AsyncConfiguration asyncConf;
-	@Autowired
-	TusServerProperties tusServerProperties;
 	FhirContext ctx;
 	Keycloak instance;
 	TokenManager tokenManager;
