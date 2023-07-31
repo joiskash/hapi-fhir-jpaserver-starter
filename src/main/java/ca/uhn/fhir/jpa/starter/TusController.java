@@ -35,7 +35,7 @@ public class TusController {
 		servletResponse.addHeader("Access-Control-Expose-Headers","Location,Upload-Offset,Upload-Length");
 	}
 
-	@RequestMapping(method = RequestMethod.POST, value = "/getBytesTus")
+	@RequestMapping(method = RequestMethod.POST, value = "/transferImage")
 	public ResponseEntity<String> getBytesAndSaveImages(@RequestParam("uploadUrl") String uploadUrl) {
 		try {
 			tusService.getBytesAndSaveImage(tusFileUploadService, uploadUrl);
