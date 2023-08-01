@@ -14,11 +14,11 @@ public class Validation {
 	private static final Logger logger = LoggerFactory.getLogger(Validation.class);
 	
 	public static boolean validateClinicAndStateCsvLine(String[] csvLineContent) {
-		return csvLineContent.length == 11;
+		return csvLineContent.length == 15;
 	}
 	
 	public static boolean validationHcwCsvLine(String[] hcwCsvData) {
-		return hcwCsvData.length == 17;
+		return hcwCsvData.length == 18;
 	}
 
 	public static boolean validationDashboardUserCsvLine(String[] hcwCsvData) {
@@ -33,8 +33,8 @@ public class Validation {
 			mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES , false);
 			JWTPayload jwtPayload = mapper.readValue(payload, JWTPayload.class);
 			return jwtPayload;
-		} catch (JsonProcessingException | IndexOutOfBoundsException e) {
-			logger.warn(ExceptionUtils.getStackTrace(e));
+		} catch (JsonProcessingException | IndexOutOfBoundsException | NullPointerException e) {
+//			logger.warn(ExceptionUtils.getStackTrace(e));
 		}
 		return null;
 	}

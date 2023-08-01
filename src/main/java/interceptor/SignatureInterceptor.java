@@ -173,7 +173,6 @@ public class SignatureInterceptor extends GenericFilterBean{
 				return false;
 			}	
 		}catch(Exception e) {
-			logger.warn(ExceptionUtils.getStackTrace(e));
 			return false;
 		}
 	}
