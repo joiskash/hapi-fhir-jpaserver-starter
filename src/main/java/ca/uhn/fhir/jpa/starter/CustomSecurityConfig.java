@@ -1,7 +1,10 @@
 package ca.uhn.fhir.jpa.starter;
 
 
-import interceptor.SignatureInterceptor;
+import java.util.Arrays;
+
+import javax.ws.rs.HEAD;
+
 import org.hibernate.annotations.common.util.impl.LoggerFactory;
 import org.keycloak.adapters.KeycloakConfigResolver;
 import org.keycloak.adapters.springboot.KeycloakSpringBootConfigResolver;
@@ -28,15 +31,22 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import java.util.Arrays;
+import interceptor.SignatureInterceptor;
 
-import static org.springframework.http.HttpMethod.*;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import static org.springframework.http.HttpMethod.DELETE;
+import static org.springframework.http.HttpMethod.GET;
+import static org.springframework.http.HttpMethod.POST;
+import static org.springframework.http.HttpMethod.PUT;
+import static org.springframework.http.HttpMethod.OPTIONS;
 
 //@ConditionalOnProperty(prefix = "keycloak", name = "enabled", havingValue = "true", matchIfMissing = true)
 @KeycloakConfiguration
 public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
 	private static final String CORS_ALLOWED_HEADERS =
-            "origin,content-type,accept,x-requested-with,Authorization,Access-Control-Allow-Credentials";
+            "origin,content-type,accept,x-requested-with,Authorization,Access-Control-Allow-Credentials,kid";
 
     private String opensrpAllowedSources = "http://testhost.dashboard:3000/,http://localhost:3000/,https://oclink.io/,https://opencampaignlink.org/";
 
@@ -82,20 +92,10 @@ public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
         http.cors()
                 .and()
                 .authorizeRequests()
-                .antMatchers("/")
-                .permitAll()
-                .antMatchers("/home")
-                .permitAll()
-                .antMatchers(GET,"/fhir/Composition")
-                .permitAll()
-                .antMatchers(GET,"/fhir/Parameters")
-                .permitAll()
-                .antMatchers(GET,"/fhir/Binary")
-                .permitAll()
+                .antMatchers("/**")
+                .authenticated()
                 .mvcMatchers("/logout.do")
                 .permitAll()
-                .antMatchers("/fhir/**","/iprd/**","/iprdWeb/**")
-                .authenticated()
                 .and()
                 .csrf()
                 .ignoringAntMatchers("/fhir/**", "/iprd/**","/iprdWeb/**")
@@ -105,40 +105,12 @@ public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
     }
 
 
-    @Override
-    public void configure(WebSecurity web) throws Exception {
-        /* @formatter:off */
-        web.ignoring()
-                .mvcMatchers("/js/**")
-                .and()
-                .ignoring()
-                .mvcMatchers("/css/**")
-                .and()
-                .ignoring()
-                .mvcMatchers("/images/**")
-                .and()
-                .ignoring()
-                .mvcMatchers("/html/**")
-                .and()
-                .ignoring()
-                .antMatchers(HttpMethod.OPTIONS, "/**")
-                .and()
-                .ignoring()
-                .antMatchers("/home")
-                .and()
-                .ignoring()
-                .antMatchers("/*")
-                .and()
-                .ignoring()
-                .antMatchers("/fhir/metadata");
-    }
-
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(opensrpAllowedSources.split(",")));
         configuration.setAllowedMethods(
-                Arrays.asList(GET.name(), POST.name(), PUT.name(), DELETE.name()));
+                Arrays.asList(GET.name(), POST.name(), PUT.name(), DELETE.name(),OPTIONS.name()));
         configuration.setAllowedHeaders(Arrays.asList(CORS_ALLOWED_HEADERS.split(",")));
         configuration.setMaxAge(corsMaxAge);
         configuration.setAllowCredentials(true);
