@@ -118,13 +118,6 @@ public class HelperService {
 		mapOfIdsAndOrgIdToChildrenMapPair = new LinkedHashMap<String,Pair<List<String>, LinkedHashMap<String, List<String>>>>();
 		mapOfOrgHierarchy = new LinkedHashMap<String,List<OrgItem>>();
 	}
-
-	private enum OrganizationType {
-		STATE,
-		LGA,
-		WARD,
-		FACILITY
-	}
 	
 	public Pair<List<String>,LinkedHashMap<String,List<String>>> fetchIdsAndOrgIdToChildrenMapPair(String orgId) {
 		if(!mapOfIdsAndOrgIdToChildrenMapPair.containsKey(orgId))
@@ -1661,7 +1654,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			GroupResource parentGroupResource = realmResource.groups().group(groupRep.getAttributes().get("parent").get(0));
 			GroupRepresentation parentGroup = parentGroupResource.toRepresentation();
 			String parentName = parentGroup.getName();
-			groupRep.setName(groupRep.getName() + " " + parentName);
+			groupRep.setName(parentName + "_" + groupRep.getName());
 			return createKeycloakGroup(groupRep);
 		}
 	}
@@ -1737,7 +1730,11 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			obj.setSystem(IDENTIFIER_SYSTEM + "/KeycloakId");
 			obj.setValue(keycloakId);
 			MethodOutcome outcome = FhirClientAuthenticatorService.getFhirClient().update().resource(resource).execute();
-			return outcome.getId().getIdPart();
+			if (outcome.getCreated() || outcome.getOperationOutcome() == null) {
+				return outcome.getId().getIdPart();
+			} else {
+				return null;
+			}
 			}
 			return existingResource.getIdElement().getIdPart();
 		}catch (SecurityException | NoSuchMethodException | InvocationTargetException e) {
@@ -1778,7 +1775,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 						addresses.add(address);
 						organizationResource.setAddress(addresses);
 						ContactPoint contactPoint = new ContactPoint();
-						contactPoint.setValue(countryCode+phoneNumber);
+						contactPoint.setValue(countryCode+"-"+phoneNumber);
 						List <ContactPoint> listOfContacts = organizationResource.getTelecom();
 						boolean contactExists = false;
 						for (ContactPoint existinContact : listOfContacts) {
@@ -1836,7 +1833,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 								pluscodeExtension.setValue(pluscodeValue);
 								locationResource.addExtension(pluscodeExtension);
 							}
-						}catch (Exception e){
+						}catch (NumberFormatException e){
 							logger.warn("The provided updated latitude or longitude value is non-numeric");
 						}
 					}
@@ -1901,7 +1898,10 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			Response response = realmResource.users().create(userRep);
 			return CreatedResponseUtil.getCreatedId(response);
 		} catch (WebApplicationException e) {
-			logger.warn(ExceptionUtils.getStackTrace(e));
+			String errorMessage = "An error occurred while creating a Keycloak user.";
+			errorMessage += "\nUser: " + userRep.getUsername();
+			errorMessage += "\nError message: " + e.getMessage();
+			logger.warn(errorMessage, ExceptionUtils.getStackTrace(e));
 			return null;
 		}
 	}
@@ -1915,7 +1915,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		try {
 			realmResource.clients().get(clientId).roles().create(roleRepresentation);
 		} catch (WebApplicationException ex) {
-			logger.error("cannot create role" + roleRepresentation.getName() + "\n" + ex.getStackTrace().toString());
+			logger.error("Cannot create role" + roleRepresentation.getName() + "\n" + ex.getStackTrace().toString());
 		}
 	}
 

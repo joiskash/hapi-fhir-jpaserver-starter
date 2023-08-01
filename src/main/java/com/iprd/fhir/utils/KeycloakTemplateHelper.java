@@ -81,7 +81,7 @@ public class KeycloakTemplateHelper {
 		}else {
 			user.setEmail(email);	
 		}
-		user.singleAttribute("phoneNumber", countryCode+phoneNumber);
+		user.singleAttribute("phoneNumber", countryCode+"-"+phoneNumber);
 		user.singleAttribute("type",role);
 		user.singleAttribute("practitioner_id", practitionerId);
 		user.singleAttribute("practitioner_role_id", practitionerRoleId);
@@ -106,7 +106,7 @@ public class KeycloakTemplateHelper {
 		}else {
 			user.setEmail(email);
 		}
-		user.singleAttribute("phoneNumber", countryCode+phoneNumber);
+		user.singleAttribute("phoneNumber", countryCode+"-"+phoneNumber);
 		user.singleAttribute("type", role);
 		user.singleAttribute("practitioner_id", practitionerId);
 		user.singleAttribute("practitioner_role_id", practitionerRoleId);

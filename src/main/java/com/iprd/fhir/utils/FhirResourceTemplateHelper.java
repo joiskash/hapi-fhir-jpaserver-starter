@@ -164,7 +164,7 @@ public class FhirResourceTemplateHelper {
 			StringType pluscodeValue = new StringType(pluscode);
 			pluscodeExtension.setValue(pluscodeValue);
 			facility.addExtension(pluscodeExtension);
-		}catch (Exception e){
+		}catch (NumberFormatException e){
 			logger.warn("The provided latitude or longitude value is non-numeric. Clinic Details - ", clinic, district, city, state);
 		}
 		Reference organizationRef = new Reference();
