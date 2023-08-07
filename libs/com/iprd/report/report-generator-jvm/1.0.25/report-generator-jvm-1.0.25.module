@@ -1,10 +1,10 @@
 {
   "formatVersion": "1.1",
   "component": {
-    "url": "../../report-generator/1.0.21/report-generator-1.0.21.module",
+    "url": "../../report-generator/1.0.25/report-generator-1.0.25.module",
     "group": "com.iprd.report",
     "module": "report-generator",
-    "version": "1.0.21",
+    "version": "1.0.25",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -47,13 +47,13 @@
       ],
       "files": [
         {
-          "name": "report-generator-jvm-1.0.21.jar",
-          "url": "report-generator-jvm-1.0.21.jar",
-          "size": 279963,
-          "sha512": "59964d7b3138d06d9390524224df4dc5751a95bbbe1ccfadfdab5af802bc790a3d1e9aa45a6e144b62d1f8221363ad1fabfebd65d17d36c904f83d761f2d356d",
-          "sha256": "8c3609ccd81a3b944e5158ac90b10fa83ab1535eeceb2056b7925c23cd30043d",
-          "sha1": "ddabb09de7d617330e5d831b6acd879e4f8c004e",
-          "md5": "ee7ad6b15d5da8053eee485120a745b3"
+          "name": "report-generator-jvm-1.0.25.jar",
+          "url": "report-generator-jvm-1.0.25.jar",
+          "size": 284650,
+          "sha512": "22c0c38b7b4e87162c6ac490fb8b26e96e739082d0e56ae2c11904e3777404b2ad1eb1e2359a9f80ccc553b4f8fe09b4a49815ee5963d3a748e1f81a945653e0",
+          "sha256": "29f4b9c4675e9847523bc107351e4fd742d2211faafa019cb6616d366de80a98",
+          "sha1": "2e88d569cda42910b9143afcf44d9264c0e51d3a",
+          "md5": "80e83368216e48e76a213f7860aa7a45"
         }
       ]
     },
@@ -145,13 +145,13 @@
       ],
       "files": [
         {
-          "name": "report-generator-jvm-1.0.21.jar",
-          "url": "report-generator-jvm-1.0.21.jar",
-          "size": 279963,
-          "sha512": "59964d7b3138d06d9390524224df4dc5751a95bbbe1ccfadfdab5af802bc790a3d1e9aa45a6e144b62d1f8221363ad1fabfebd65d17d36c904f83d761f2d356d",
-          "sha256": "8c3609ccd81a3b944e5158ac90b10fa83ab1535eeceb2056b7925c23cd30043d",
-          "sha1": "ddabb09de7d617330e5d831b6acd879e4f8c004e",
-          "md5": "ee7ad6b15d5da8053eee485120a745b3"
+          "name": "report-generator-jvm-1.0.25.jar",
+          "url": "report-generator-jvm-1.0.25.jar",
+          "size": 284650,
+          "sha512": "22c0c38b7b4e87162c6ac490fb8b26e96e739082d0e56ae2c11904e3777404b2ad1eb1e2359a9f80ccc553b4f8fe09b4a49815ee5963d3a748e1f81a945653e0",
+          "sha256": "29f4b9c4675e9847523bc107351e4fd742d2211faafa019cb6616d366de80a98",
+          "sha1": "2e88d569cda42910b9143afcf44d9264c0e51d3a",
+          "md5": "80e83368216e48e76a213f7860aa7a45"
         }
       ]
     }
