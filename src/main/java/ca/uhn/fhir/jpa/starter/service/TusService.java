@@ -4,12 +4,15 @@ import ca.uhn.fhir.jpa.starter.AppProperties;
 import ca.uhn.fhir.jpa.starter.TusServerProperties;
 import me.desair.tus.server.TusFileUploadService;
 import me.desair.tus.server.exception.TusException;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.Charsets;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -22,6 +25,7 @@ import java.util.List;
 @Import(AppProperties.class)
 @Service
 public class TusService {
+	private static final Logger logger = LoggerFactory.getLogger(TusService.class);
 	private static final long FIXED_DELAY = 50 * 60000;
 	@Autowired
 	AppProperties appProperties;
@@ -52,7 +56,7 @@ public class TusService {
 	private void transferImagesToFinalStorage(String uploadUrl) throws TusException, IOException{
 		try{
 			InputStream inputStream = tusFileUploadService.getUploadedBytes(uploadUrl);
-			String fileName = new String(org.apache.commons.codec.binary.Base64.decodeBase64(tusFileUploadService.getUploadInfo(uploadUrl).getEncodedMetadata().split(" ")[1]), Charsets.UTF_8);
+			String fileName = new String(Base64.decodeBase64(tusFileUploadService.getUploadInfo(uploadUrl).getEncodedMetadata().split(" ")[1]), Charsets.UTF_8);
 
 			// Use ByteArrayOutputStream to collect all the bytes from the InputStream.
 			ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -73,10 +77,11 @@ public class TusService {
 			// Get the complete byte array from the ByteArrayOutputStream.
 			byte[] completeByteArray = byteArrayOutputStream.toByteArray();
 			BufferedImage image = byteArrayToBufferedImage(completeByteArray);
-			saveImageToFile(image, appProperties.getImage_path(), fileName);
-			tusFileUploadService.deleteUpload(uploadUrl);
+			boolean isImageSaved = saveImageToFile(image, appProperties.getImage_path(), fileName);
+			if (isImageSaved)
+				tusFileUploadService.deleteUpload(uploadUrl);
 		} catch (FileNotFoundException e){
-			e.printStackTrace();
+			logger.warn(ExceptionUtils.getStackTrace(e));
 		}
 	}
 
@@ -102,18 +107,19 @@ public class TusService {
 		return ImageIO.read(inputStream);
 	}
 
-	private static void saveImageToFile(BufferedImage image, String folderPath, String fileName) throws IOException {
+	private static boolean saveImageToFile(BufferedImage image, String folderPath, String fileName) throws IOException {
 		Path outputPath = Paths.get(folderPath, fileName);
 		File outputFile = outputPath.toFile();
 
 		// Create parent directories if they don't exist
 		Files.createDirectories(outputPath.getParent());
 		if(outputFile.exists()){
-			System.out.println("File already exists with the name" + fileName);
+			logger.warn("File already exists with the name" + fileName);
 		}else{
 			if (image != null)
-				ImageIO.write(image, "jpeg", outputFile);
+				return ImageIO.write(image, "jpeg", outputFile);
 		}
+		return false;
 	}
 
 }
