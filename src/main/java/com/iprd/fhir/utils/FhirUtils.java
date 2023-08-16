@@ -10,10 +10,13 @@ import java.util.Map;
 import java.util.Set;
 
 import ca.uhn.fhir.jpa.starter.service.FhirClientAuthenticatorService;
+import ca.uhn.fhir.rest.client.api.IGenericClient;
+
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.PractitionerRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import autovalue.shaded.kotlin.Pair;
 import autovalue.shaded.kotlin.Triple;
@@ -24,7 +27,6 @@ import org.hl7.fhir.r4.model.Identifier;
 public class FhirUtils {
 	
 	private static final Logger logger = LoggerFactory.getLogger(FhirUtils.class);
-
 	public static Boolean isOclPatient(List<Identifier> identifiers) {
 		for (Identifier identifier : identifiers) {
 			if (identifier.hasSystem() && identifier.getSystem().equals("http://iprdgroup.com/identifiers/patientWithOcl")) {
@@ -97,15 +99,15 @@ public class FhirUtils {
 		return map;
 	}
 
-	public static void getBundleBySearchUrl(Bundle bundle, String url) {
-		Bundle searchBundle = FhirClientAuthenticatorService.getFhirClient().search()
+	public void getBundleBySearchUrl(Bundle bundle, String url,IGenericClient fhirClient) {
+		Bundle searchBundle = fhirClient.search()
 			.byUrl(url)
 			.returnBundle(Bundle.class)
 			.execute();
 		bundle.getEntry().addAll(searchBundle.getEntry());
 		// Recursively adding all the resources to the bundle if it contains next URL.
 		if (searchBundle.hasLink() && bundleContainsNext(searchBundle)) {
-			getBundleBySearchUrl(bundle, getNextUrl(searchBundle.getLink()));
+			getBundleBySearchUrl(bundle, getNextUrl(searchBundle.getLink()),fhirClient);
 		}
 	}
 
@@ -126,8 +128,8 @@ public class FhirUtils {
 		return null;
 	}
 
-	public static String getPractitionerRoleFromId(String practitionerRoleId){
-		Bundle bundle = FhirClientAuthenticatorService.getFhirClient().search().forResource(PractitionerRole.class).where(PractitionerRole.RES_ID.exactly().identifier(practitionerRoleId)).returnBundle(Bundle.class).execute();
+	public String getPractitionerRoleFromId(String practitionerRoleId,IGenericClient fhirClient){
+		Bundle bundle = fhirClient.search().forResource(PractitionerRole.class).where(PractitionerRole.RES_ID.exactly().identifier(practitionerRoleId)).returnBundle(Bundle.class).execute();
 		if (!bundle.hasEntry()) {
 			return null;
 		}

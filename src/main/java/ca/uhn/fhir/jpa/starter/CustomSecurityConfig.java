@@ -17,8 +17,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.mapping.SimpleAuthorityMapper;
 import org.springframework.security.core.session.SessionRegistryImpl;
+import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
@@ -63,7 +65,7 @@ public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
     @Override
 	protected SessionAuthenticationStrategy sessionAuthenticationStrategy() {
 		// TODO Auto-generated method stub
-    	return new RegisterSessionAuthenticationStrategy(new SessionRegistryImpl());
+    	return new NullAuthenticatedSessionStrategy();
 	}
 
     @Bean
@@ -75,24 +77,27 @@ public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         super.configure(http);
-        http.addFilterBefore(new SignatureInterceptor(appProperties), KeycloakAuthenticationProcessingFilter.class);
-        logger.info("Inside configure method");
-        http.cors()
-                .and()
-                .authorizeRequests()
-                .antMatchers("/**")
-                .authenticated()
-                .antMatchers("/actuator/health")
-                .permitAll()
-                .mvcMatchers("/logout.do")
-                .permitAll()
-                .and()
-                .csrf()
-                .ignoringAntMatchers("/fhir/**", "/iprd/**", "/api/**")
-                .and()
-                .logout()
-                .logoutRequestMatcher(new AntPathRequestMatcher("logout.do", "GET"));
-    }
+        http
+        .addFilter(new SignatureInterceptor(appProperties))
+        .cors()
+        .and()
+        .authorizeRequests()
+        .antMatchers("/**")
+        .authenticated()
+        .antMatchers("/actuator/health")
+        .permitAll()
+        .mvcMatchers("/logout.do")
+        .permitAll()
+        .and()
+        .csrf()
+        .ignoringAntMatchers("/fhir/**", "/iprd/**")
+        .and()
+        .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        .and()
+        .logout()
+        .logoutRequestMatcher(new AntPathRequestMatcher("logout.do", "GET"));
+       }
+
 
 
     @Bean
