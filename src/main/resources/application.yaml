@@ -53,6 +53,12 @@ spring:
          org:
             hibernate:
                type: trace
+
+#configuration for tus protocol
+tus-server:
+   file-directory: Images
+   context-path: /api/upload
+
 hapi:
    fhir:
 #      hibernate.cache.use_structured_entries: false
