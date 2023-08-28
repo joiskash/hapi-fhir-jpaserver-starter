@@ -28,6 +28,13 @@
           "module": "itext7-core",
           "version": {
             "requires": "7.2.2"
+          },
+          "thirdPartyCompatibility": {
+            "artifactSelector": {
+              "name": "itext7-core",
+              "type": "pom",
+              "extension": "pom"
+            }
           }
         },
         {
@@ -70,6 +77,13 @@
           "module": "itext7-core",
           "version": {
             "requires": "7.2.2"
+          },
+          "thirdPartyCompatibility": {
+            "artifactSelector": {
+              "name": "itext7-core",
+              "type": "pom",
+              "extension": "pom"
+            }
           }
         },
         {
