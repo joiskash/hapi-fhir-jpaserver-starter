@@ -64,7 +64,7 @@
         <dependency>
             <groupId>com.iprd.report</groupId>
             <artifactId>report-generator-jvm</artifactId>
-            <version>1.0.28</version>
+            <version>1.0.29</version>
         </dependency>
         <dependency>
             <groupId>org.keycloak</groupId>
@@ -472,6 +472,11 @@
             <artifactId>google-cloud-logging-logback</artifactId>
             <version>0.129.4-alpha</version>
 	</dependency>
+<!--        <dependency>-->
+<!--            <groupId>dev.zacsweers.autoservice.ksp</groupId>-->
+<!--            <artifactId>dev.zacsweers.autoservice.ksp.gradle.plugin</artifactId>-->
+<!--            <version>0.2.1</version>-->
+<!--        </dependency>-->
     </dependencies>
     <dependencyManagement>
         <dependencies>
