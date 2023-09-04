@@ -1,18 +1,16 @@
 package ca.uhn.fhir.jpa.starter.service;
 
+import android.util.Pair;
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.jpa.starter.AppProperties;
-import ca.uhn.fhir.jpa.starter.AsyncConfiguration;
-import ca.uhn.fhir.jpa.starter.DashboardConfigContainer;
-import ca.uhn.fhir.jpa.starter.DashboardEnvironmentConfig;
+import ca.uhn.fhir.jpa.starter.*;
 import ca.uhn.fhir.jpa.starter.model.*;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
 import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 import ca.uhn.fhir.rest.gclient.ICriterion;
 import ca.uhn.fhir.rest.gclient.IQuery;
-
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.google.gson.Gson;
 import com.iprd.fhir.utils.*;
@@ -21,9 +19,7 @@ import com.iprd.report.model.FilterItem;
 import com.iprd.report.model.FilterOptions;
 import com.iprd.report.model.data.*;
 import com.iprd.report.model.definition.*;
-
 import android.util.Pair;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -39,12 +35,10 @@ import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
-
 import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
-
 import com.iprd.report.model.definition.BarComponent;
 import com.iprd.report.model.definition.LineChart;
 import org.apache.commons.io.IOUtils;
@@ -53,13 +47,11 @@ import org.hibernate.engine.jdbc.ClobProxy;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
-import org.hl7.fhir.r4.model.Bundle.BundleEntryComponent;
-import org.hl7.fhir.r4.model.Bundle.BundleEntryRequestComponent;
-import org.hl7.fhir.r4.model.Bundle.BundleLinkComponent;
-import org.hl7.fhir.r4.model.Bundle.BundleType;
-import org.hl7.fhir.r4.model.Bundle.HTTPVerb;
+import org.hl7.fhir.r4.model.Bundle.*;
+import org.hl7.fhir.r4.model.Location.LocationPositionComponent;
 import org.keycloak.admin.client.CreatedResponseUtil;
 import org.keycloak.admin.client.Keycloak;
+import org.keycloak.admin.client.resource.GroupResource;
 import org.keycloak.admin.client.resource.RealmResource;
 import org.keycloak.admin.client.token.TokenManager;
 import org.keycloak.representations.idm.GroupRepresentation;
@@ -78,7 +70,23 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.PostConstruct;
+import javax.servlet.http.HttpServletRequest;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
 import java.io.*;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
+import java.sql.Clob;
+import java.sql.Date;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.concurrent.Future;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.hibernate.search.util.common.impl.CollectionHelper.asList;
@@ -99,23 +107,21 @@ public class HelperService {
 	DashboardEnvironmentConfig dashboardEnvironmentConfig;
 	@Autowired
 	AsyncConfiguration asyncConf;
-	
-	FhirContext ctx;
-	Keycloak instance;
-	TokenManager tokenManager;
-	BearerTokenAuthInterceptor authInterceptor;
-
+	@Autowired
+	FhirClientAuthenticatorService fhirClientAuthenticatorService;
 	Map <String,DashboardConfigContainer> dashboardEnvToConfigMap = new HashMap<>();
 
 	private static final Logger logger = LoggerFactory.getLogger(HelperService.class);
-	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
-	private static String SMS_EXTENTION_URL = "http://iprdgroup.com/Extentions/sms-sent";
 	private static final long INITIAL_DELAY = 5 * 30000L;
 	private static final long FIXED_DELAY = 5 * 60000L;
 
 	private static final long AUTH_INITIAL_DELAY = 25 * 60000L;
 	private static final long AUTH_FIXED_DELAY = 50 * 60000L;
 	private static final long DELAY = 2 * 60000;
+	// todo - change the URLs below once resources are updated as per Implementation Guide
+	private static  String EXTENSION_PLUSCODE_URL = "http://iprdgroup.org/fhir/Extention/location-plus-code";
+	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
+	private static String SMS_EXTENTION_URL = "http://iprdgroup.com/Extentions/sms-sent";
 
 	NotificationDataSource notificationDataSource;
 	LinkedHashMap<String,Pair<List<String>, LinkedHashMap<String, List<String>>>> mapOfIdsAndOrgIdToChildrenMapPair;
@@ -137,7 +143,7 @@ public class HelperService {
 	}
 	
 	private List<OrgItem> fetchOrgHierarchy(String orgId) {
-		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
+		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) fhirClientAuthenticatorService.getFhirClient());
 
 		if(!mapOfOrgHierarchy.containsKey(orgId))
 		{
@@ -148,34 +154,109 @@ public class HelperService {
 	
 	public void refreshMapForOrgId(String orgId) {
 		mapOfIdsAndOrgIdToChildrenMapPair.put(orgId, getFacilityIdsAndOrgIdToChildrenMapPair(orgId));
-		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
+		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) fhirClientAuthenticatorService.getFhirClient());
 		mapOfOrgHierarchy.put(orgId, ReportGeneratorFactory.INSTANCE.reportGenerator().getOrganizationHierarchy(fhirClientProvider, orgId));
 	}
-	
-	
-	
+
+	private String getKeycloakGroupId(String groupName) {
+		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+		try {
+			List<GroupRepresentation> groups = realmResource.groups().groups(groupName, 0, Integer.MAX_VALUE, false);
+			if (groups.size() == 0){
+				return null;
+			}
+			return groups.get(0).getId();
+		}
+		catch (Exception e) {
+			logger.warn(ExceptionUtils.getStackTrace(e));
+		}
+		return null;
+	}
+
+	//Recursive function below. Therefore, keeping counter to identify the depth of hierarchy and update the corresponding group type. 0->facility, 1->ward, 2->lga, 3->state, 4->country
+	private String updateKeycloakGroupAndResource(String[] updatedDetails, String groupId, int counter) {
+
+		//State(0), LGA(1), Ward(2), FacilityUID(3), FacilityCode(4), CountryCode(5), PhoneNumber(6), FacilityName(7), FacilityLevel(8), Ownership(9), Argusoft Identifier(10), Longitude(11), Latitude(12), Pluscode(13)
+		String stateName = updatedDetails[0];
+		String lgaName = updatedDetails[1];
+		String wardName = updatedDetails[2];
+		String facilityUID = updatedDetails[3];
+		String facilityCode = updatedDetails[4];
+		String countryCode = updatedDetails[5];
+		String phoneNumber = updatedDetails[6];
+		String facilityName = updatedDetails[7];
+		String level = updatedDetails[8];
+		String ownership = updatedDetails[9];
+		String argusoftIdentifier = updatedDetails[10];
+		String longitude = updatedDetails[11];
+		String latitude = updatedDetails[12];
+		String pluscode = updatedDetails[13];
+		String country = updatedDetails[14];
+
+		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+		try {
+			GroupResource groupResource = realmResource.groups().group(groupId);
+			GroupRepresentation group = groupResource.toRepresentation();
+			Map<String, List<String>> attributes = group.getAttributes();
+			String type = attributes.get("type").get(0);
+			String orgId = attributes.get("organization_id").get(0);
+			String locId = attributes.containsKey("location_id") ? attributes.get("location_id").get(0): null;
+			String parentId = attributes.containsKey("parent") ? attributes.get("parent").get(0) : null;
+			if(type.equals("facility")){
+				updateKeycloakGroupAndResource(updatedDetails, parentId,counter + 1);
+				String oldName = attributes.get("facility_name").get(0);
+				String oldOwnership = attributes.get("ownership").get(0);
+				String oldLevel = attributes.get("facility_level").get(0);
+				if(!oldName.equals(facilityName)) attributes.put("facility_name", Arrays.asList(facilityName));
+				if(!oldOwnership.equals(ownership)) attributes.put("ownership", Arrays.asList(ownership));
+				if(!oldLevel.equals(level)) attributes.put("facility_level", Arrays.asList(level));
+				groupResource.update(group);
+				updateResource(orgId, Organization.class, updatedDetails, counter);
+				updateResource(locId, Location.class, updatedDetails, counter);
+			}else {
+				if (type.equals("country")) return null;
+				updateKeycloakGroupAndResource(updatedDetails, parentId, counter + 1);
+				String oldName = group.getName();
+				if (type.equals("state") && oldName.contentEquals(stateName)) return null;
+				if (type.equals("lga") && oldName.contentEquals(lgaName)) return null;
+				if (type.equals("ward") && oldName.contentEquals(wardName)) return null;
+				group.setName(counter == 3 ? stateName : counter == 1 ? wardName : lgaName);
+				groupResource.update(group);
+				updateResource(orgId, Organization.class, updatedDetails, counter);
+			}
+		}
+		catch (Exception e) {
+			logger.warn(ExceptionUtils.getStackTrace(e));
+		}
+		return null;
+	}
+
+
 	public ResponseEntity<LinkedHashMap<String, Object>> createGroups(MultipartFile file) throws IOException {
 
 		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-		List<String> states = new ArrayList<>();
-		List<String> lgas = new ArrayList<>();
-		List<String> wards = new ArrayList<>();
-		List<String> clinics = new ArrayList<>();
 		List<String> invalidClinics = new ArrayList<>();
 
 		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
 		String singleLine;
 		int iteration = 0;
-		String stateId = "", lgaId = "", wardId = "", facilityOrganizationId = "", facilityLocationId = "";
-		String stateGroupId = "", lgaGroupId = "", wardGroupId = "", facilityGroupId = "";
+		String countryId = "", stateId = "", lgaId = "", wardId = "", facilityOrganizationId = "", facilityLocationId = "";
+		String countryGroupId = "", stateGroupId = "", lgaGroupId = "", wardGroupId = "", facilityGroupId = "";
 		while ((singleLine = bufferedReader.readLine()) != null) {
 			if (iteration == 0) { //skip header of CSV file
 				iteration++;
 				continue;
 			}
-			iteration ++;
 			String[] csvData = singleLine.split(",");
-			//State(0), LGA(1), Ward(2), FacilityUID(3), FacilityCode(4), CountryCode(5), PhoneNumber(6), FacilityName(7), FacilityLevel(8), Ownership(9), Argusoft Identifier(10)
+			iteration++;
+
+			if (!Validation.validateClinicAndStateCsvLine(csvData)) {
+				logger.warn("CSV validation failed");
+				invalidClinics.add("Row length validation failed: " + singleLine);
+				continue;
+			}
+
+			//State(0), LGA(1), Ward(2), FacilityUID(3), FacilityCode(4), CountryCode(5), PhoneNumber(6), FacilityName(7), FacilityLevel(8), Ownership(9), Argusoft Identifier(10), Longitude(11), Latitude(12), Pluscode(13), Country(14)
 			String stateName = csvData[0];
 			String lgaName = csvData[1];
 			String wardName = csvData[2];
@@ -187,89 +268,92 @@ public class HelperService {
 			String type = csvData[8];
 			String ownership = csvData[9];
 			String argusoftIdentifier = csvData[10];
+			String longitude = csvData[11];
+			String latitude = csvData[12];
+			String pluscode = csvData[13];
+			String countryName = csvData[14];
 
 			if (facilityUID.isEmpty()) {
 				invalidClinics.add("Invalid facilityUID: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
 				continue;
 			}
 
-			if (!Validation.validateClinicAndStateCsvLine(csvData)) {
-				logger.warn("CSV validation failed");
-				invalidClinics.add("Row length validation failed: " +  facilityName + "," + stateName + "," + lgaName + "," + wardName);
-				continue;
-			}
+			String group_id = getKeycloakGroupId(facilityUID);
 
-			if (!states.contains(stateName)) {
-				Organization state = FhirResourceTemplateHelper.state(stateName);
-				states.add(state.getName());
-				GroupRepresentation stateGroupRep = KeycloakTemplateHelper.stateGroup(state.getName(), state.getIdElement().getIdPart());
+			if (null != group_id) {
+				updateKeycloakGroupAndResource(csvData, group_id, 0);
+			} else {
+				Organization country = FhirResourceTemplateHelper.country(countryName);
+				GroupRepresentation countryGroupRep = KeycloakTemplateHelper.countryGroup(country.getName(), country.getIdElement().getIdPart());
+				countryGroupId = createKeycloakGroup(countryGroupRep);
+				if (countryGroupId == null) {
+					invalidClinics.add("Group creation failed for state: " + facilityName + "," + countryName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+				countryId = createResource(countryGroupId, country, Organization.class);
+				if (countryId == null) {
+					invalidClinics.add("Resource creation failed for state: " + facilityName + "," + countryName + "," + stateName + "," + lgaName + "," + wardName);
+					continue;
+				}
+
+				Organization state = FhirResourceTemplateHelper.state(stateName, countryName, countryId);
+				GroupRepresentation stateGroupRep = KeycloakTemplateHelper.stateGroup(state.getName(), countryGroupId,state.getIdElement().getIdPart());
 				stateGroupId = createKeycloakGroup(stateGroupRep);
 				if (stateGroupId == null) {
 					invalidClinics.add("Group creation failed for state: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
 					continue;
 				}
-				stateId = updateResource(stateGroupId, state, Organization.class, Organization.NAME.matchesExactly().value(state.getName()), new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", "state"));
+				stateId = createResource(stateGroupId, state, Organization.class);
 				if (stateId == null) {
 					invalidClinics.add("Resource creation failed for state: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
 					continue;
 				}
-			}
-
-			if (!lgas.contains(lgaName)) {
 				Organization lga = FhirResourceTemplateHelper.lga(lgaName, stateName, stateId);
-				lgas.add(lga.getName());
-				GroupRepresentation lgaGroupRep = KeycloakTemplateHelper.lgaGroup(lga.getName(), stateGroupId, lga.getIdElement().getIdPart());
-				lgaGroupId = createKeycloakGroup(lgaGroupRep);
-				if (lgaGroupId == null) {
-					invalidClinics.add("Group creation failed for LGA: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
-					continue;
-				}
-				lgaId = updateResource(lgaGroupId, lga, Organization.class, Organization.NAME.matchesExactly().value(lga.getName()), new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", "lga"));
+					GroupRepresentation lgaGroupRep = KeycloakTemplateHelper.lgaGroup(lga.getName(), stateGroupId, lga.getIdElement().getIdPart());
+					lgaGroupId = createKeycloakGroup(lgaGroupRep);
+					if (lgaGroupId == null) {
+						invalidClinics.add("Group creation failed for LGA: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+						continue;
+					}
+					lgaId = createResource(lgaGroupId, lga, Organization.class);
 				if (lgaId == null) {
 					invalidClinics.add("Resource creation failed for LGA: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
 					continue;
 				}
-			}
 
-			if (!wards.contains(wardName)) {
 				Organization ward = FhirResourceTemplateHelper.ward(stateName, lgaName, wardName, lgaId);
-				wards.add(ward.getName());
-				GroupRepresentation wardGroupRep = KeycloakTemplateHelper.wardGroup(ward.getName(), lgaGroupId, ward.getIdElement().getIdPart());
-				wardGroupId = createKeycloakGroup(wardGroupRep);
-				if (wardGroupId == null) {
-					invalidClinics.add("Group creation failed for Ward: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
-					continue;
-				}
-				wardId = updateResource(wardGroupId, ward, Organization.class, Organization.NAME.matchesExactly().value(ward.getName()), new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", "ward"));
+					GroupRepresentation wardGroupRep = KeycloakTemplateHelper.wardGroup(ward.getName(), lgaGroupId, ward.getIdElement().getIdPart());
+					wardGroupId = createKeycloakGroup(wardGroupRep);
+					if (wardGroupId == null) {
+						invalidClinics.add("Group creation failed for Ward: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+						continue;
+					}
+				wardId = createResource(wardGroupId, ward, Organization.class);
 				if (wardId == null) {
 					invalidClinics.add("Resource creation failed for Ward: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
 					continue;
 				}
-			}
 
-			if (!clinics.contains(facilityName)) {
-				Location clinicLocation = FhirResourceTemplateHelper.clinic(stateName, lgaName, wardName, facilityName);
 				Organization clinicOrganization = FhirResourceTemplateHelper.clinic(facilityName, facilityUID, facilityCode, countryCode, phoneNumber, stateName, lgaName, wardName, wardId, csvData[10]);
-				clinics.add(clinicOrganization.getName());
-
+				Location clinicLocation = FhirResourceTemplateHelper.clinic(stateName, lgaName, wardName, facilityName, longitude, latitude, pluscode, clinicOrganization.getIdElement().getIdPart());
 				GroupRepresentation facilityGroupRep = KeycloakTemplateHelper.facilityGroup(
-					clinicOrganization.getName(),
-					wardGroupId,
-					clinicOrganization.getIdElement().getIdPart(),
-					clinicLocation.getIdElement().getIdPart(),
-					type,
-					ownership,
-					facilityUID,
-					facilityCode,
-					argusoftIdentifier
-				);
-				facilityGroupId = createKeycloakGroup(facilityGroupRep);
-				if (facilityGroupId == null) {
-					invalidClinics.add("Group creation failed for facility: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
-					continue;
-				}
-				facilityOrganizationId = updateResource(facilityGroupId, clinicOrganization, Organization.class, Organization.NAME.matchesExactly().value(clinicOrganization.getName()), new TokenClientParam("_tag").exactly().systemAndCode("https://www.iprdgroup.com/ValueSet/OrganizationType/tags", "facility"));
-				facilityLocationId = updateResource(facilityGroupId, clinicLocation, Location.class, Location.NAME.matchesExactly().value(clinicLocation.getName()));
+						clinicOrganization.getName(),
+						wardGroupId,
+						clinicOrganization.getIdElement().getIdPart(),
+						clinicLocation.getIdElement().getIdPart(),
+						type,
+						ownership,
+						facilityUID,
+						facilityCode,
+						argusoftIdentifier
+					);
+					facilityGroupId = createKeycloakGroup(facilityGroupRep);
+					if (facilityGroupId == null) {
+						invalidClinics.add("Group creation failed for facility: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+						continue;
+					}
+				facilityOrganizationId = createResource(facilityGroupId, clinicOrganization, Organization.class);
+				facilityLocationId = createResource(facilityGroupId, clinicLocation, Location.class);
 				if (facilityOrganizationId == null || facilityLocationId == null) {
 					invalidClinics.add("Resource creation failed for Facility: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
 				}
@@ -319,7 +403,7 @@ public class HelperService {
 			String qualification = hcwData[14];
 			String stateIdentifier = hcwData[15];
 			String argusoftIdentifier = hcwData[16];
-
+			String countryName = hcwData[17];
 			organizationId = getOrganizationIdByFacilityUID(facilityUID);
 
 			String s = firstName + "," + lastName + "," + state + "," + lga + "," + ward + "," + facilityUID;
@@ -345,7 +429,7 @@ public class HelperService {
 				practitioners.add(practitioner.getTelecom().get(0).getValue());
 				PractitionerRole practitionerRole = FhirResourceTemplateHelper.practitionerRole(role, qualification, practitioner.getIdElement().getIdPart(), organizationId);
 //				practitionerRoleId = createResource(practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId(practitionerId));
-				UserRepresentation user = KeycloakTemplateHelper.user(firstName, lastName, email, keycloakUserName, initialPassword, phoneNumber, countryCode, practitioner.getIdElement().getIdPart(), practitionerRole.getIdElement().getIdPart(), role, state, lga, ward, facilityUID, argusoftIdentifier);
+				UserRepresentation user = KeycloakTemplateHelper.user(firstName, lastName, email, keycloakUserName, initialPassword, phoneNumber, countryCode, practitioner.getIdElement().getIdPart(), practitionerRole.getIdElement().getIdPart(), role, state, lga, ward, facilityUID, argusoftIdentifier, countryName);
 				String keycloakUserId = createKeycloakUser(user);
 				if (keycloakUserId == null) {
 					map.put("User not created", s);
@@ -353,7 +437,7 @@ public class HelperService {
 					RoleRepresentation KeycloakRoleRepresentation = KeycloakTemplateHelper.role(role);
 					createRoleIfNotExists(KeycloakRoleRepresentation);
 					assignRole(keycloakUserId, KeycloakRoleRepresentation.getName());
-					practitionerId = updateResource(
+					practitionerId = createResource(
 						keycloakUserId,
 						practitioner,
 						Practitioner.class,
@@ -365,7 +449,7 @@ public class HelperService {
 						invalidUsers.add("Resource creation failed for user: " + s);
 						continue;
 					}
-					practitionerRoleId = updateResource(keycloakUserId, practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId("Practitioner/"+practitionerId));
+					practitionerRoleId = createResource(keycloakUserId, practitionerRole, PractitionerRole.class, PractitionerRole.PRACTITIONER.hasId("Practitioner/"+practitionerId));
 					if (practitionerRoleId == null) {
 						invalidUsers.add("Resource creation failed for user: " + s);
 					}
@@ -429,7 +513,6 @@ public class HelperService {
 				invalidUsers.add("Practitioner already exists: " + firstName + "," + lastName + "," + userName + "," + email );
 				continue;
 			}
-
 			Practitioner practitioner = FhirResourceTemplateHelper.user(firstName, lastName, phoneNumber, countryCode, gender, birthDate, organizationName, facilityUID, type.toLowerCase());
 			practitioners.add(practitioner.getName().get(0).getFamily());
 			practitioners.add(practitioner.getName().get(0).getGivenAsSingleString());
@@ -456,7 +539,10 @@ public class HelperService {
 				invalidUsers.add("Failed to create user: " + firstName + " " + lastName + "," + userName + "," + email);
 				continue;
 			}
-			practitionerId = updateResource(
+			RoleRepresentation KeycloakRoleRepresentation = KeycloakTemplateHelper.role(role);
+			createRoleIfNotExists(KeycloakRoleRepresentation);
+			assignRole(keycloakUserId, KeycloakRoleRepresentation.getName());
+			practitionerId = createResource(
 				keycloakUserId,
 				practitioner,
 				Practitioner.class,
@@ -473,7 +559,7 @@ public class HelperService {
 				// Because in while creating PractitionerRole old previous practitioner id used as reference.
 				practitionerRole.setId(new IdType("Practitioner", practitionerId));
 			}
-			practitionerRoleId = updateResource(
+			practitionerRoleId = createResource(
 				keycloakUserId,
 				practitionerRole,
 				PractitionerRole.class,
@@ -497,7 +583,7 @@ public class HelperService {
 	}
 
 	public List<GroupRepresentation> getGroupsByUser(String userId) {
-		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
 		List<GroupRepresentation> groups = realmResource.users().get(userId).groups(0, appProperties.getKeycloak_max_group_count(), false);
 		return groups;
 	}
@@ -561,7 +647,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 
 	@Async("asyncTaskExecutor")
 	public void saveQueryResult(String organizationId, String startDate, String endDate, LinkedHashMap<String, String> filters, List<String> hashcodes,String env, List<ANCDailySummaryConfig> ancDailySummaryConfig) throws FileNotFoundException {
-		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
+		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) fhirClientAuthenticatorService.getFhirClient());
 		List<String> fhirSearchList = getFhirSearchListByFilters(filters,env);
 		List<DataResult> dataResult = ReportGeneratorFactory.INSTANCE.reportGenerator().getAncDailySummaryData(fhirClientProvider, new DateRange(startDate, endDate), organizationId, ancDailySummaryConfig, fhirSearchList);
 		for(String hashcode : hashcodes){
@@ -572,13 +658,18 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 	//@Scheduled(fixedDelay = 300000)
 	@Scheduled(cron = "0 0 23 * * *")
 	public void refreshSyncForCurrentMonth() {
-		List<String> orgIdsForCaching = appProperties.getOrganization_ids_for_caching();
-		List<String> envsForCaching = appProperties.getEnvs_for_caching();
-		for(String orgId : orgIdsForCaching) {
-			for (String envs : envsForCaching) {
-				Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(orgId);
-				cacheDashboardData(idsAndOrgIdToChildrenMapPair.first, String.valueOf(LocalDate.now().minusDays(31)), String.valueOf(LocalDate.now().minusDays(1)), envs);
+		try {
+			List<String> orgIdsForCaching = appProperties.getOrganization_ids_for_caching();
+			List<String> envsForCaching = appProperties.getEnvs_for_caching();
+			for(String orgId : orgIdsForCaching) {
+				for (String envs : envsForCaching) {
+					Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(orgId);
+					cacheDashboardData(idsAndOrgIdToChildrenMapPair.first, String.valueOf(LocalDate.now().minusDays(31)), String.valueOf(LocalDate.now().minusDays(1)), envs);
+				}
 			}
+		}
+		catch (Exception e) {
+			logger.warn("Caching task failed "+ExceptionUtils.getStackTrace(e));
 		}
 	}
 
@@ -596,7 +687,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			});
 		}
 		Bundle batchBundle = generateBatchBundle("/Encounter?location=" + String.join(",", locationIdsList));
-		Bundle responseBundle = FhirClientAuthenticatorService.getFhirClient().transaction().withBundle(batchBundle).prettyPrint().encodedJson().execute();
+		Bundle responseBundle = fhirClientAuthenticatorService.getFhirClient().transaction().withBundle(batchBundle).prettyPrint().encodedJson().execute();
 		return responseBundle;
 	}
 
@@ -687,7 +778,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 	}
 
 	public void getOrganizationsPartOf(List<String> idsList, String url) {
-		Bundle searchBundle = FhirClientAuthenticatorService.getFhirClient().search()
+		Bundle searchBundle = fhirClientAuthenticatorService.getFhirClient().search()
 			.byUrl(url)
 			.returnBundle(Bundle.class)
 			.execute();
@@ -777,7 +868,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 
 		Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(organizationId);
 		for (String orgId : idsAndOrgIdToChildrenMapPair.first) {
-			patientCount += FhirClientAuthenticatorService.getFhirClient().search()
+			patientCount += fhirClientAuthenticatorService.getFhirClient().search()
 				.byUrl("Patient?_has:Encounter:patient:service-provider=" + orgId + "&_count=0")
 				.returnBundle(Bundle.class)
 				.execute()
@@ -1414,7 +1505,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 
 	public void cacheDashboardData(String orgId, Date startDate, Date endDate, List<IndicatorItem> indicators, List<BarChartDefinition> barCharts, List<TabularItem> tabularItems, List<LineChart> lineCharts, List<PieChartDefinition> pieChartDefinitions,int count,HashMap <String,Pair<Long,Long>> orgToTiming ) {
 		notificationDataSource = NotificationDataSource.getInstance();
-		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
+		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) fhirClientAuthenticatorService.getFhirClient());
 		DashboardModel dashboard = ReportGeneratorFactory.INSTANCE.reportGenerator().getOverallDataToCache(
 			fhirClientProvider,
 			orgId,
@@ -1505,7 +1596,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 	}
 
 	public String getOrganizationIdByPractitionerRoleId(String practitionerRoleId) {
-		Bundle bundle = FhirClientAuthenticatorService.getFhirClient().search().forResource(PractitionerRole.class).where(PractitionerRole.RES_ID.exactly().identifier(practitionerRoleId)).returnBundle(Bundle.class).execute();
+		Bundle bundle = fhirClientAuthenticatorService.getFhirClient().search().forResource(PractitionerRole.class).where(PractitionerRole.RES_ID.exactly().identifier(practitionerRoleId)).returnBundle(Bundle.class).execute();
 		if (!bundle.hasEntry()) {
 			return null;
 		}
@@ -1516,7 +1607,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 	public Organization getOrganizationResourceByPractitionerRoleId(String practitionerRoleId) {
 		String organizationId = getOrganizationIdByPractitionerRoleId(practitionerRoleId);
 		if (organizationId == null) return null;
-		Bundle bundle = FhirClientAuthenticatorService.getFhirClient().search().forResource(Organization.class).where(Organization.RES_ID.exactly().identifier(organizationId)).returnBundle(Bundle.class).execute();
+		Bundle bundle = fhirClientAuthenticatorService.getFhirClient().search().forResource(Organization.class).where(Organization.RES_ID.exactly().identifier(organizationId)).returnBundle(Bundle.class).execute();
 		if (!bundle.hasEntry()) {
 			return null;
 		}
@@ -1524,10 +1615,11 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 	}
 
 	public String getOrganizationIdByFacilityUID(String facilityUID) {
+		FhirUtils fhirUtils = new FhirUtils();
 		Bundle organizationBundle = new Bundle();
 		String queryPath = "/Organization?";
 		queryPath += "identifier=" + facilityUID + "";
-		FhirUtils.getBundleBySearchUrl(organizationBundle, queryPath);
+		fhirUtils.getBundleBySearchUrl(organizationBundle, queryPath,fhirClientAuthenticatorService.getFhirClient());
 		if (organizationBundle.hasEntry() && organizationBundle.getEntry().size() > 0) {
 			Organization organization = (Organization) organizationBundle.getEntry().get(0).getResource();
 			return organization.getIdElement().getIdPart();
@@ -1537,7 +1629,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 
 	public String getOrganizationIdByOrganizationNameAndType(String name, String type) {
 
-		Bundle organizationBundle = FhirClientAuthenticatorService.getFhirClient()
+		Bundle organizationBundle = fhirClientAuthenticatorService.getFhirClient()
 			.search()
 			.forResource(Organization.class)
 			.where(Organization.NAME.matchesExactly().value(name))
@@ -1567,11 +1659,11 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 	}
 
 	private String createKeycloakGroup(GroupRepresentation groupRep) {
-		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
-		List<GroupRepresentation> groups = realmResource.groups().groups(groupRep.getName(), 0, Integer.MAX_VALUE, true);
-
+		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+		List<GroupRepresentation> groups = realmResource.groups().groups(groupRep.getName(), 0, Integer.MAX_VALUE, false);
+//
 		for (GroupRepresentation group : groups) {
-			if (group.getName().equals(groupRep.getName())) {
+			if (group.getName().equals(groupRep.getName()) && (groupRep.getAttributes().get("parent") == null || group.getAttributes().containsValue(groupRep.getAttributes().get("parent")))) {
 				return group.getId();
 			}
 		}
@@ -1579,8 +1671,12 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			Response response = realmResource.groups().add(groupRep);
 			return CreatedResponseUtil.getCreatedId(response);
 		} catch (WebApplicationException ex) {
-			logger.warn(ex.getLocalizedMessage());
-			return null;
+			logger.warn("Group with identical name found. Appending the parent group name to existing name.");
+			GroupResource parentGroupResource = realmResource.groups().group(groupRep.getAttributes().get("parent").get(0));
+			GroupRepresentation parentGroup = parentGroupResource.toRepresentation();
+			String parentName = parentGroup.getName();
+			groupRep.setName(parentName + "_" + groupRep.getName());
+			return createKeycloakGroup(groupRep);
 		}
 	}
 
@@ -1597,8 +1693,8 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 //		return bundle.getEntry().get(0).getFullUrl().split("/")[5];
 //	}
 
-	private <R extends IBaseResource> String updateResource(String keycloakId, IBaseResource resource, Class<R> resourceClass, ICriterion<?>... theCriterion) {
-		IQuery<IBaseBundle> query = FhirClientAuthenticatorService.getFhirClient().search().forResource(resourceClass).where(theCriterion[0]);
+	private <R extends IBaseResource> String createResource(String keycloakId, IBaseResource resource, Class<R> resourceClass, ICriterion<?>... theCriterion) {
+		IQuery<IBaseBundle> query = fhirClientAuthenticatorService.getFhirClient().search().forResource(resourceClass).where(theCriterion[0]);
 		for (int i = 1; i < theCriterion.length; i++)
 			query = query.and(theCriterion[i]);
 		try {
@@ -1617,7 +1713,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			Identifier obj = (Identifier) addIdentifier.invoke(resource);
 			obj.setSystem(IDENTIFIER_SYSTEM + "/KeycloakId");
 			obj.setValue(keycloakId);
-			MethodOutcome outcome = FhirClientAuthenticatorService.getFhirClient().update().resource(resource).execute();
+			MethodOutcome outcome = fhirClientAuthenticatorService.getFhirClient().update().resource(resource).execute();
 			return outcome.getId().getIdPart();
 		} catch (SecurityException | NoSuchMethodException | InvocationTargetException e) {
 			logger.warn(ExceptionUtils.getStackTrace(e));
@@ -1627,8 +1723,191 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		return null;
 	}
 
+	private <R extends IBaseResource> String createResource(String keycloakId, IBaseResource resource, Class<R> resourceClass) {
+
+		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+		R existingResource = null;
+		GroupResource groupResource = null;
+		GroupRepresentation group = null;
+		try {
+			if (resourceClass.equals(Organization.class)){
+				groupResource = realmResource.groups().group(keycloakId);
+				group = groupResource.toRepresentation();
+				String orgId = group.getAttributes().get("organization_id").get(0);
+				existingResource = fhirClientAuthenticatorService.getFhirClient().read().resource(resourceClass).withId(orgId).execute();
+			} else if (resourceClass.equals(Location.class)) {
+				groupResource = realmResource.groups().group(keycloakId);
+				group = groupResource.toRepresentation();
+				String locId = group.getAttributes().get("location_id").get(0);
+				existingResource = fhirClientAuthenticatorService.getFhirClient().read().resource(resourceClass).withId(locId).execute();
+			}
+		} catch (ResourceNotFoundException e) {
+			logger.warn("RESOURCE NOT FOUND");
+		}
+		try {
+			if (existingResource == null) {
+			Method addIdentifier = resource.getClass().getMethod("addIdentifier");
+			Identifier obj = (Identifier) addIdentifier.invoke(resource);
+			obj.setSystem(IDENTIFIER_SYSTEM + "/KeycloakId");
+			obj.setValue(keycloakId);
+			MethodOutcome outcome = fhirClientAuthenticatorService.getFhirClient().update().resource(resource).execute();
+			if (outcome.getCreated() || outcome.getOperationOutcome() == null) {
+				return outcome.getId().getIdPart();
+			} else {
+				return null;
+			}
+			}
+			return existingResource.getIdElement().getIdPart();
+		}catch (SecurityException | NoSuchMethodException | InvocationTargetException e) {
+			logger.warn(ExceptionUtils.getStackTrace(e));
+		} catch (IllegalAccessException e) {
+			logger.warn(ExceptionUtils.getStackTrace(e));
+		}
+		return null;
+	}
+
+	private <R extends IBaseResource> void updateResource(String resourceId, Class<R> resourceClass,  String[] updatedDetails, int counter) {
+		//State(0), LGA(1), Ward(2), FacilityUID(3), FacilityCode(4), CountryCode(5), PhoneNumber(6), FacilityName(7), FacilityLevel(8), Ownership(9), Argusoft Identifier(10), Longitude(11), Latitude(12), Pluscode(13)
+		String stateName = updatedDetails[0];
+		String lgaName = updatedDetails[1];
+		String wardName = updatedDetails[2];
+		String countryCode = updatedDetails[5];
+		String phoneNumber = updatedDetails[6];
+		String facilityName = updatedDetails[7];
+		String longitude = updatedDetails[11];
+		String latitude = updatedDetails[12];
+		String pluscode = updatedDetails[13];
+		String countryName = updatedDetails[14];
+		Organization organizationResource = resourceClass.equals(Organization.class) ? fhirClientAuthenticatorService.getFhirClient().read().resource(Organization.class).withId(resourceId).execute() : null;
+		Location locationResource = resourceClass.equals(Location.class) ? fhirClientAuthenticatorService.getFhirClient().read().resource(Location.class).withId(resourceId).execute() : null;
+		try {
+			switch (counter){
+				case 0:
+					if(resourceClass.equals(Organization.class)){
+						if(!organizationResource.getName().equals(facilityName)) {
+							organizationResource.addAlias(organizationResource.getName());
+							organizationResource.setName(facilityName);
+						}
+						List<Address> addresses = new ArrayList<>();
+						Address address = new Address();
+						address.setState(stateName);
+						address.setDistrict(lgaName);
+						address.setCity(wardName);
+						addresses.add(address);
+						organizationResource.setAddress(addresses);
+						ContactPoint contactPoint = new ContactPoint();
+						contactPoint.setValue(countryCode+"-"+phoneNumber);
+						List <ContactPoint> listOfContacts = organizationResource.getTelecom();
+						boolean contactExists = false;
+						for (ContactPoint existinContact : listOfContacts) {
+							if (existinContact.getValue().equals(contactPoint.getValue())) {
+								contactExists = true;
+								break;
+							}
+						}
+						if (!contactExists) {
+							List <ContactPoint> distinctListOfContacts = listOfContacts.stream().collect(Collectors.toMap(ContactPoint::getValue, Function.identity(), (existing, replacement) -> existing)).values().stream().collect(Collectors.toList());
+							distinctListOfContacts.add(contactPoint);
+							organizationResource.setTelecom(distinctListOfContacts);
+						}
+					}else{
+						locationResource.setName(facilityName);
+						Address address = new Address();
+						address.setState(stateName);
+						address.setDistrict(lgaName);
+						address.setCity(wardName);
+						locationResource.setAddress(address);
+						boolean positionPresent = locationResource.hasPosition();
+						try{
+							if(positionPresent) {
+								LocationPositionComponent oldPosition = locationResource.getPosition();
+								LocationPositionComponent newPosition = new LocationPositionComponent();
+								newPosition.setLongitude(Double.parseDouble(longitude));
+								newPosition.setLatitude(Double.parseDouble(latitude));
+								if (!(oldPosition.getLatitudeElement().equals(newPosition.getLatitudeElement()) && !oldPosition.getLongitudeElement().equals(newPosition.getLongitudeElement()))) {
+									locationResource.setPosition(newPosition);
+									Extension pluscodeExtension = new Extension();
+									pluscodeExtension.setUrl(EXTENSION_PLUSCODE_URL);
+									StringType pluscodeValue = new StringType(pluscode);
+									pluscodeExtension.setValue(pluscodeValue);
+									List<Extension> listOfExtension = locationResource.getExtension();
+									boolean extensionExists = false;
+									for (Extension existingExtension : listOfExtension) {
+										if (existingExtension.getUrl().equals(pluscodeExtension.getUrl())) {
+											existingExtension.setValue(pluscodeValue);
+											extensionExists = true;
+											break;
+										}
+									}
+									if (!extensionExists) {
+										locationResource.addExtension(pluscodeExtension);
+									}
+								}
+							}else{
+								LocationPositionComponent position = new LocationPositionComponent();
+								position.setLongitude(Double.parseDouble(longitude));
+								position.setLatitude(Double.parseDouble(latitude));
+								locationResource.setPosition(position);
+								Extension pluscodeExtension = new Extension();
+								pluscodeExtension.setUrl(EXTENSION_PLUSCODE_URL);
+								StringType pluscodeValue = new StringType(pluscode);
+								pluscodeExtension.setValue(pluscodeValue);
+								locationResource.addExtension(pluscodeExtension);
+							}
+							
+						}catch (NumberFormatException e){
+							logger.warn("The provided updated latitude or longitude value is non-numeric");
+						}
+					}
+					break;
+				case 1:
+					if(resourceClass.equals(Organization.class)){
+						organizationResource.addAlias(organizationResource.getName());
+						organizationResource.setName(wardName);
+						List<Address> addresses = new ArrayList<>();
+						Address address = new Address();
+						address.setState(stateName);
+						address.setDistrict(lgaName);
+						address.setCity(wardName);
+						addresses.add(address);
+						organizationResource.setAddress(addresses);
+					}
+					break;
+				case 2:
+					if(resourceClass.equals(Organization.class)){
+						organizationResource.addAlias(organizationResource.getName());
+						organizationResource.setName(lgaName);
+						List<Address> addresses = new ArrayList<>();
+						Address address = new Address();
+						address.setState(stateName);
+						address.setDistrict(lgaName);
+						addresses.add(address);
+						organizationResource.setAddress(addresses);
+					}
+					break;
+				case 3:
+					if(resourceClass.equals(Organization.class)){
+						organizationResource.addAlias(organizationResource.getName());
+						organizationResource.setName(stateName);
+						List<Address> addresses = new ArrayList<>();
+						Address address = new Address();
+						address.setState(stateName);
+						addresses.add(address);
+						organizationResource.setAddress(addresses);
+					}
+			}
+			if(null == organizationResource){
+				fhirClientAuthenticatorService.getFhirClient().update().resource(locationResource).execute();
+			}else{
+				fhirClientAuthenticatorService.getFhirClient().update().resource(organizationResource).execute();
+			}
+		} catch (SecurityException  e) {
+			logger.warn(ExceptionUtils.getStackTrace(e));
+		}
+	}
+
 	private String createKeycloakUser(UserRepresentation userRep) {
-		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
 		List<UserRepresentation> users = realmResource.users().search(userRep.getUsername(), 0, Integer.MAX_VALUE);
 		//if not empty, return id
 
@@ -1641,13 +1920,16 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			Response response = realmResource.users().create(userRep);
 			return CreatedResponseUtil.getCreatedId(response);
 		} catch (WebApplicationException e) {
-			logger.warn(ExceptionUtils.getStackTrace(e));
+			String errorMessage = "An error occurred while creating a Keycloak user.";
+			errorMessage += "\nUser: " + userRep.getUsername();
+			errorMessage += "\nError message: " + e.getMessage();
+			logger.warn(errorMessage, ExceptionUtils.getStackTrace(e));
 			return null;
 		}
 	}
 
 	private void createRoleIfNotExists(RoleRepresentation roleRepresentation) {
-		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
 		String clientId = realmResource.clients().findByClientId(appProperties.getFhir_hapi_client_id()).get(0).getId();
 		if (roleWithNameExists(clientId, roleRepresentation.getName())) {
 			return;
@@ -1655,12 +1937,12 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		try {
 			realmResource.clients().get(clientId).roles().create(roleRepresentation);
 		} catch (WebApplicationException ex) {
-			logger.error("cannot create role" + roleRepresentation.getName() + "\n" + ex.getStackTrace().toString());
+			logger.error("Cannot create role" + roleRepresentation.getName() + "\n" + ex.getStackTrace().toString());
 		}
 	}
 
 	public Boolean roleWithNameExists(String clientId, String roleName) {
-		RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
 		for (RoleRepresentation roleRepresentation : realmResource.clients().get(clientId).roles().list()) {
 			if (roleRepresentation.getName().equals(roleName)) {
 				return true;
@@ -1669,10 +1951,9 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		return false;
 
 	}
-
 	private void assignRole(String userId, String roleName) {
 		try {
-			RealmResource realmResource = FhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
+			RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
 			String clientId = realmResource.clients().findByClientId(appProperties.getFhir_hapi_client_id()).get(0).getId();
 			RoleRepresentation saveRoleRepresentation = realmResource.clients().get(clientId).roles().get(roleName).toRepresentation();
 			realmResource.users().get(userId).roles().clientLevel(clientId).add(asList(saveRoleRepresentation));

@@ -29,20 +29,20 @@ public class FhirClientAuthenticatorService {
 	@Autowired
 	AppProperties appProperties;
 	
-	private static Keycloak keycloak;
+	private Keycloak keycloak;
 
-	private static FhirContext ctx;
+	private FhirContext ctx;
 	static String serverBase;
 	private Keycloak instance;
 	private TokenManager tokenManager;
-	private static BearerTokenAuthInterceptor authInterceptor;
+	private BearerTokenAuthInterceptor authInterceptor;
 
 	public void initializeKeycloak() {
 		  ctx = FhirContext.forCached(FhirVersionEnum.R4);
 		  ctx.getRestfulClientFactory().setSocketTimeout(900 * 1000);
 		  ctx.getRestfulClientFactory().setConnectionRequestTimeout(900 * 1000);
 		  serverBase = appProperties.getHapi_Server_address();
-		  ResteasyClient client = (ResteasyClient)ClientBuilder.newClient();
+//		  ResteasyClient client = (ResteasyClient)ClientBuilder.newClient();
 		    keycloak = KeycloakBuilder
 		       .builder()
 		       .serverUrl(appProperties.getKeycloak_Server_address())
@@ -51,7 +51,7 @@ public class FhirClientAuthenticatorService {
 		       .clientId(appProperties.getKeycloak_Client_Id())
 		       .username (appProperties.getKeycloak_Username())
 		       .password(appProperties.getKeycloak_Password())
-		       .resteasyClient(client)
+//		       .resteasyClient(client)
 		       .build();
 		  instance = Keycloak.
 		      getInstance(
@@ -72,11 +72,11 @@ public class FhirClientAuthenticatorService {
 	  authInterceptor = new BearerTokenAuthInterceptor(accessToken); // the reason this is below is to unregister interceptors to avoid memory leak. Null pointer is caught in try catch. 
 	}
 	
-	public static Keycloak getKeycloak() {
+	public Keycloak getKeycloak() {
 		return keycloak;
 	}
 	
-	public static IGenericClient getFhirClient() {
+	public IGenericClient getFhirClient() {
 		IGenericClient fhirClient = ctx.newRestfulGenericClient(serverBase);
 		fhirClient.registerInterceptor(authInterceptor);
 		return fhirClient;

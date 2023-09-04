@@ -1,10 +1,7 @@
 package ca.uhn.fhir.jpa.starter;
 
 
-import java.util.Arrays;
-
-import javax.ws.rs.HEAD;
-
+import interceptor.SignatureInterceptor;
 import org.hibernate.annotations.common.util.impl.LoggerFactory;
 import org.keycloak.adapters.KeycloakConfigResolver;
 import org.keycloak.adapters.springboot.KeycloakSpringBootConfigResolver;
@@ -15,29 +12,25 @@ import org.keycloak.adapters.springsecurity.client.KeycloakRestTemplate;
 import org.keycloak.adapters.springsecurity.config.KeycloakWebSecurityConfigurerAdapter;
 import org.keycloak.adapters.springsecurity.filter.KeycloakAuthenticationProcessingFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Scope;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.builders.WebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.authority.mapping.SimpleAuthorityMapper;
 import org.springframework.security.core.session.SessionRegistryImpl;
+import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
+import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import interceptor.SignatureInterceptor;
+import java.util.Arrays;
 
-import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
-import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import static org.springframework.http.HttpMethod.DELETE;
-import static org.springframework.http.HttpMethod.GET;
-import static org.springframework.http.HttpMethod.POST;
-import static org.springframework.http.HttpMethod.PUT;
-import static org.springframework.http.HttpMethod.OPTIONS;
+import static org.springframework.http.HttpMethod.*;
 
 //@ConditionalOnProperty(prefix = "keycloak", name = "enabled", havingValue = "true", matchIfMissing = true)
 @KeycloakConfiguration
@@ -72,7 +65,7 @@ public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
     @Override
 	protected SessionAuthenticationStrategy sessionAuthenticationStrategy() {
 		// TODO Auto-generated method stub
-    	return new RegisterSessionAuthenticationStrategy(new SessionRegistryImpl());
+    	return new NullAuthenticatedSessionStrategy();
 	}
 
     @Bean
@@ -84,22 +77,27 @@ public class CustomSecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
     @Override
     protected void configure(HttpSecurity http) throws Exception {
         super.configure(http);
-        http.addFilterBefore(new SignatureInterceptor(appProperties), KeycloakAuthenticationProcessingFilter.class);
-        logger.info("Inside configure method");
-        http.cors()
-                .and()
-                .authorizeRequests()
-                .antMatchers("/**")
-                .authenticated()
-                .mvcMatchers("/logout.do")
-                .permitAll()
-                .and()
-                .csrf()
-                .ignoringAntMatchers("/fhir/**", "/iprd/**")
-                .and()
-                .logout()
-                .logoutRequestMatcher(new AntPathRequestMatcher("logout.do", "GET"));
-    }
+        http
+        .addFilter(new SignatureInterceptor(appProperties))
+        .cors()
+        .and()
+        .authorizeRequests()
+        .antMatchers("/actuator/health/**")
+        .permitAll()
+        .antMatchers("/**")
+        .authenticated()
+        .mvcMatchers("/logout.do")
+        .permitAll()
+        .and()
+        .csrf()
+        .ignoringAntMatchers("/fhir/**", "/iprd/**","/api/**")
+        .and()
+        .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        .and()
+        .logout()
+        .logoutRequestMatcher(new AntPathRequestMatcher("logout.do", "GET"));
+       }
+
 
 
     @Bean
