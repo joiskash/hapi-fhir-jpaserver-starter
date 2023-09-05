@@ -3,16 +3,16 @@ package ca.uhn.fhir.jpa.starter.service;
 import ca.uhn.fhir.jpa.starter.AppProperties;
 import ca.uhn.fhir.jpa.starter.DashboardEnvironmentConfig;
 import ca.uhn.fhir.jpa.starter.model.CacheEntity;
+import ca.uhn.fhir.jpa.starter.model.MapCacheEntity;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
+import com.google.common.collect.Lists;
+import com.google.openlocationcode.OpenLocationCode;
 import com.iprd.fhir.utils.Operation;
 import com.iprd.fhir.utils.OperationHelper;
 import com.iprd.fhir.utils.Utils;
 import com.iprd.report.*;
 import com.iprd.report.model.data.*;
 import com.iprd.report.model.definition.*;
-
-import com.iprd.report.model.definition.BarComponent;
-import com.iprd.report.model.definition.LineChart;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,11 +23,8 @@ import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @Import(AppProperties.class)
 @Service
@@ -590,6 +587,84 @@ public class CachingService {
 				}
 			}
 			notificationDataSource.insertObjects(cacheEntitiesForInsert);
+		}
+	}
+
+	@Async("asyncTaskExecutor")
+	public void cacheMapData(List<String> orgIdList, String startDate, String endDate){
+		notificationDataSource = NotificationDataSource.getInstance();
+		List<List<String>> orgIDListBatch = Lists.partition(orgIdList, 50);
+		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
+		ArrayList<MapCacheEntity> resultToCache = new ArrayList<>();
+		ArrayList<MapCacheEntity> resultToUpdateCache = new ArrayList<>();
+		List<DateWiseMapData> dateWiseMapData = new ArrayList<DateWiseMapData>();
+		for (List<String> orgIds: orgIDListBatch){
+			dateWiseMapData.addAll(ReportGeneratorFactory.INSTANCE.reportGenerator().getMapData(fhirClientProvider, String.join(",", orgIds), new DateRange(startDate, endDate)));
+		}
+		logger.warn("-- Adding items to insert or update data for Map Cache");
+		for(DateWiseMapData item: dateWiseMapData){
+			Date date = Date.valueOf(LocalDate.parse(item.getDateKey(), DateTimeFormatter.ISO_DATE));
+			if (item.getDateResponse().size() == 0){
+				continue;
+			}
+			Set<Map.Entry<String, LinkedHashMap<String, PositionData>>> x = item.getDateResponse().entrySet();
+			for (Map.Entry<String, LinkedHashMap<String, PositionData>> entry: x){
+				String orgId = entry.getKey().substring(13);
+				for (Map.Entry<String, PositionData> stringPositionDataEntry : entry.getValue().entrySet()) {
+					Double lat = stringPositionDataEntry.getValue().getLat();
+					Double lng = stringPositionDataEntry.getValue().getLng();
+					String plusCode = OpenLocationCode.encode(lat, lng);
+					String locId = stringPositionDataEntry.getKey();
+					LinkedHashMap<String, Integer> categoryResponse = stringPositionDataEntry.getValue().getCategoryResponse();
+					for (Map.Entry<String, Integer> entry1: categoryResponse.entrySet()){
+						String categoryId = entry1.getKey();
+						Integer weight = entry1.getValue();
+						String id = date.toString() + orgId + locId + categoryId;
+						List<MapCacheEntity> existingMapCache = notificationDataSource.getMapCacheByDateOrgIdAndCategory(date, orgId, categoryId);
+						if(existingMapCache.isEmpty()){
+							MapCacheEntity mapCache = new MapCacheEntity(id, orgId, date, categoryId, lat, lng, plusCode, weight, Date.valueOf(LocalDate.now()));
+							resultToCache.add(mapCache);
+						}else{
+							MapCacheEntity existingMapCacheEntity =  existingMapCache.get(0);
+							existingMapCacheEntity.setWeight(weight);
+							resultToUpdateCache.add(existingMapCacheEntity);
+						}
+					}
+				}
+			}
+		}
+		logger.warn("-- Caching started for Map Data");
+		notificationDataSource.insertObjects(resultToCache);
+		notificationDataSource.updateObjects(resultToUpdateCache);
+	}
+
+	@Async("asyncTaskExecutor")
+	public void performCachingForMapDataIfRequired(List<String> allClinics, String from, String to) {
+		List<String> clinicsToCache = new ArrayList<>();
+		Date startDateForCaching = Date.valueOf(LocalDate.parse(to, DateTimeFormatter.ISO_DATE));
+		Date endDateForCaching = Date.valueOf(LocalDate.parse(from, DateTimeFormatter.ISO_DATE));
+
+		List<String> mapDataCacheKey = Utils.getKeysForMapCache(allClinics, from, to);
+		notificationDataSource = NotificationDataSource.getInstance();
+		List<MapCacheEntity> result = notificationDataSource.getMapCacheByKeyIdList(mapDataCacheKey);
+		if(result.size() != mapDataCacheKey.size()){
+			for(String key: mapDataCacheKey){
+				List<MapCacheEntity> existingMapCache = notificationDataSource.getMapCacheByKeyId(key);
+				if(existingMapCache.isEmpty()){
+					String[] parametersOfCache = key.split("_");
+					Date dateToCache = Date.valueOf(LocalDate.parse(parametersOfCache[0], DateTimeFormatter.ISO_DATE));
+					clinicsToCache.add(parametersOfCache[1]);
+					if(dateToCache.before(startDateForCaching)){
+						startDateForCaching = dateToCache;
+					}
+					if (dateToCache.after(endDateForCaching)){
+						endDateForCaching = dateToCache;
+					}
+				}
+			}
+			if (!clinicsToCache.isEmpty()){
+				cacheMapData(clinicsToCache, startDateForCaching.toString(), endDateForCaching.toString());
+			}
 		}
 	}
 }
