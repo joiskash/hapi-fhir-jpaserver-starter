@@ -597,32 +597,32 @@ public class CachingService {
 		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) FhirClientAuthenticatorService.getFhirClient());
 		ArrayList<MapCacheEntity> resultToCache = new ArrayList<>();
 		ArrayList<MapCacheEntity> resultToUpdateCache = new ArrayList<>();
-		List<DateWiseMapData> dateWiseMapData = new ArrayList<DateWiseMapData>();
+		List<DateWiseMapData> dateWiseMapDataList = new ArrayList<DateWiseMapData>();
 		for (List<String> orgIds: orgIDListBatch){
-			dateWiseMapData.addAll(ReportGeneratorFactory.INSTANCE.reportGenerator().getMapData(fhirClientProvider, String.join(",", orgIds), new DateRange(startDate, endDate)));
+			dateWiseMapDataList.addAll(ReportGeneratorFactory.INSTANCE.reportGenerator().getMapData(fhirClientProvider, String.join(",", orgIds), new DateRange(startDate, endDate)));
 		}
 		logger.warn("-- Adding items to insert or update data for Map Cache");
-		for(DateWiseMapData item: dateWiseMapData){
+		for(DateWiseMapData item: dateWiseMapDataList){
 			Date date = Date.valueOf(LocalDate.parse(item.getDateKey(), DateTimeFormatter.ISO_DATE));
 			if (item.getDateResponse().size() == 0){
 				continue;
 			}
-			Set<Map.Entry<String, LinkedHashMap<String, PositionData>>> x = item.getDateResponse().entrySet();
-			for (Map.Entry<String, LinkedHashMap<String, PositionData>> entry: x){
+			Set<Map.Entry<String, LinkedHashMap<String, PositionData>>> dateResponseMap = item.getDateResponse().entrySet();
+			for (Map.Entry<String, LinkedHashMap<String, PositionData>> entry: dateResponseMap){
 				String orgId = entry.getKey().substring(13);
-				for (Map.Entry<String, PositionData> stringPositionDataEntry : entry.getValue().entrySet()) {
-					Double lat = stringPositionDataEntry.getValue().getLat();
-					Double lng = stringPositionDataEntry.getValue().getLng();
+				for (Map.Entry<String, PositionData> positionDataEntry : entry.getValue().entrySet()) {
+					Double lat = positionDataEntry.getValue().getLat();
+					Double lng = positionDataEntry.getValue().getLng();
 					String plusCode = OpenLocationCode.encode(lat, lng);
-					String locId = stringPositionDataEntry.getKey();
-					LinkedHashMap<String, Integer> categoryResponse = stringPositionDataEntry.getValue().getCategoryResponse();
-					for (Map.Entry<String, Integer> entry1: categoryResponse.entrySet()){
-						String categoryId = entry1.getKey();
-						Integer weight = entry1.getValue();
-						String id = date.toString() + orgId + locId + categoryId;
+					String locId = positionDataEntry.getKey();
+					LinkedHashMap<String, Integer> categoryResponseMap = positionDataEntry.getValue().getCategoryResponse();
+					for (Map.Entry<String, Integer> categoryEntry: categoryResponseMap.entrySet()){
+						String categoryId = categoryEntry.getKey();
+						Integer weight = categoryEntry.getValue();
+						String idForMapCache = date.toString() + orgId + locId + categoryId;
 						List<MapCacheEntity> existingMapCache = notificationDataSource.getMapCacheByDateOrgIdAndCategory(date, orgId, categoryId);
 						if(existingMapCache.isEmpty()){
-							MapCacheEntity mapCache = new MapCacheEntity(id, orgId, date, categoryId, lat, lng, plusCode, weight, Date.valueOf(LocalDate.now()));
+							MapCacheEntity mapCache = new MapCacheEntity(idForMapCache, orgId, date, categoryId, lat, lng, plusCode, weight, Date.valueOf(LocalDate.now()));
 							resultToCache.add(mapCache);
 						}else{
 							MapCacheEntity existingMapCacheEntity =  existingMapCache.get(0);
@@ -638,7 +638,8 @@ public class CachingService {
 		notificationDataSource.updateObjects(resultToUpdateCache);
 	}
 
-	@Async("asyncTaskExecutor")
+	//Don't remove this function. This may be utilised later
+	/*@Async("asyncTaskExecutor")
 	public void performCachingForMapDataIfRequired(List<String> allClinics, String from, String to) {
 		List<String> clinicsToCache = new ArrayList<>();
 		Date startDateForCaching = Date.valueOf(LocalDate.parse(to, DateTimeFormatter.ISO_DATE));
@@ -666,5 +667,5 @@ public class CachingService {
 				cacheMapData(clinicsToCache, startDateForCaching.toString(), endDateForCaching.toString());
 			}
 		}
-	}
+	}*/
 }

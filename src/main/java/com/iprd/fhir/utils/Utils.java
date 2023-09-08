@@ -11,10 +11,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
 
@@ -485,8 +482,8 @@ public class Utils {
 		}
 	}
 
-	// Don't remove this function. This may be utilised later
-	public static List<String> getKeysForMapCache(List<String> allClinics, String from, String to){
+// Don't remove this function. This may be utilised later
+/*	public static List<String> getKeysForMapCache(List<String> allClinics, String from, String to){
 		ArrayList<String> categories = new ArrayList<String>(Arrays.asList("antenatal", "postnatal", "child-birth", "family-planning"));
 		List<String> result = new ArrayList<>();
 		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -504,5 +501,5 @@ public class Utils {
 			});
 		});
 		return result;
-	}
+	} */
 }
