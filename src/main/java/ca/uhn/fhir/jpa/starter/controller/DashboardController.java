@@ -57,11 +57,13 @@ public class DashboardController {
 		String organizationId = allFilters.get("lga");
 		String startDate = allFilters.get("from");
 		String endDate = allFilters.get("to");
+		String age = allFilters.get("filter1Value");
 		allFilters.remove("from");
 		allFilters.remove("to");
 		allFilters.remove("lga");
 		allFilters.remove("env");
 		allFilters.remove("type");
+		allFilters.remove("age");
 		LinkedHashMap<String, String> filters = new LinkedHashMap<>(allFilters);
 
 		LocalDateTime dateTimeNow = LocalDateTime.now();
@@ -76,7 +78,7 @@ public class DashboardController {
 		}
 		String hashOfFormattedId = "";
 		for (String category : categories) {
-			hashOfFormattedId = organizationId + startDate + endDate + category + extractedFromDateTimeNow[0];
+			hashOfFormattedId = organizationId + startDate + endDate + category + extractedFromDateTimeNow[0] + age;
 			categoryWithHashCodes.put(category,hashOfFormattedId);
 			ArrayList<ApiAsyncTaskEntity> fetchAsyncData = datasource.fetchStatus(hashOfFormattedId);
 			if (fetchAsyncData == null || fetchAsyncData.isEmpty()) {
@@ -93,6 +95,7 @@ public class DashboardController {
 				}
 			}
 		}
+
 		if (helperService.getAsyncData(categoryWithHashCodes).getBody() == "Searching in Progress") return ResponseEntity.status(202).build();
 		return ResponseEntity.ok(helperService.getAsyncData(categoryWithHashCodes));
 	}
