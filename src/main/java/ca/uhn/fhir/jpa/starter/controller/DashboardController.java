@@ -99,9 +99,10 @@ public class DashboardController {
 
 
 	@RequestMapping(method = RequestMethod.GET, value = "/lastsynctime")
-	public ResponseEntity<StringBuilder> getLastSyncTime(
-		@RequestParam("lga") String lga){
-		return helperService.computeSyncTime(lga);
+	public ResponseEntity<?> getLastSyncTime(
+		@RequestParam("orgId") String orgId,
+		@RequestParam("env") String env){
+		return helperService.computeSyncTime(orgId,env);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/getTableData/{lastUpdated}")

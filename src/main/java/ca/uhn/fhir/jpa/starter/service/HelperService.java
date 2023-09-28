@@ -124,7 +124,6 @@ public class HelperService {
 	private static  String EXTENSION_PLUSCODE_URL = "http://iprdgroup.org/fhir/Extention/location-plus-code";
 	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
 	private static String SMS_EXTENTION_URL = "http://iprdgroup.com/Extentions/sms-sent";
-	private StringBuilder lastSync = new StringBuilder();
 	NotificationDataSource notificationDataSource;
 	LinkedHashMap<String,Pair<List<String>, LinkedHashMap<String, List<String>>>> mapOfIdsAndOrgIdToChildrenMapPair;
 	LinkedHashMap<String,List<OrgItem>> mapOfOrgHierarchy;
@@ -584,11 +583,10 @@ public class HelperService {
 		return new ResponseEntity<List<PatientIdentifierEntity>>(patientInfoResourceEntities,HttpStatus.OK);
 	}
 
-	public ResponseEntity<StringBuilder> computeSyncTime(String lga){
-		lastSync.setLength(0);
+	public ResponseEntity<String> computeSyncTime(String lga,String env){
+		StringBuilder lastSyncValue = new StringBuilder();
 		notificationDataSource = NotificationDataSource.getInstance();
-		List<LastSyncEntity> lastSyncData = notificationDataSource.getEntitiesByOrgEnvStatus(lga,"impact-health-v2",ApiAsyncTaskEntity.Status.COMPLETED.name());
-
+		List<LastSyncEntity> lastSyncData = notificationDataSource.getEntitiesByOrgEnvStatus(lga,env,ApiAsyncTaskEntity.Status.COMPLETED.name());
 		if (!lastSyncData.isEmpty()) {
 			// Get the last item (latest entry)
 			LastSyncEntity latestSyncData = lastSyncData.get(lastSyncData.size() - 1);
@@ -606,57 +604,39 @@ public class HelperService {
 			long seconds = TimeUnit.MILLISECONDS.toSeconds(timeDifferenceMillis) % 60;
 
 			// Format the result based on criteria
-			formatTimeDifferenceToHumanReadableString(days, hours, minutes, seconds);
-		} else {
-			lastSync.append("Not found");
+			lastSyncValue = formatTimeDifferenceToHumanReadableString(days, hours, minutes, seconds);
+
+			if (days > 0 || hours > 0 || minutes > 0 || seconds > 0) {
+				return ResponseEntity.ok(formatTimeDifferenceToHumanReadableString(days, hours, minutes, seconds).toString());
+			}
 		}
-		return ResponseEntity.ok(lastSync);
+		return ResponseEntity.ok("Not found");
 	}
 
-	public void formatTimeDifferenceToHumanReadableString(long days, long hours, long minutes, long seconds) {
+	public StringBuilder formatTimeDifferenceToHumanReadableString(long days, long hours, long minutes, long seconds) {
+		StringBuilder lastSync = new StringBuilder();
 		if (days > 0) {
-			lastSync.append(days).append(" day");
-			if (days > 1) {
-				lastSync.append("s");
-			}
+			lastSync.append(days).append(" day").append(days > 1 ? "s" : "");
 			if(hours > 0){
-				lastSync.append(", ").append(hours).append(" hour");
-				if (hours > 1) {
-					lastSync.append("s");
-				}
+				lastSync.append(", ").append(hours).append(" hour").append(hours > 1 ? "s" : "");
 			}
 		}
 		else if (hours > 0) {
-			lastSync.append(hours).append(" hour");
-			if (hours > 1) {
-				lastSync.append("s");
-			}
+			lastSync.append(hours).append(" hour").append(hours > 1 ? "s" : "");
 			if(minutes > 0){
-				lastSync.append(", ").append(minutes).append(" minute");
-				if (minutes > 1) {
-					lastSync.append("s");
-				}
+				lastSync.append(", ").append(minutes).append(" minute").append(minutes > 1 ? "s" : "");
 			}
 		} else if (minutes > 0) {
-			lastSync.append(minutes).append(" minute");
-			if (minutes > 1) {
-				lastSync.append("s");
-			}
+			lastSync.append(minutes).append(" minute").append(minutes > 1 ? "s" : "");
 			if(seconds > 0){
-				lastSync.append(", ").append(seconds).append(" second");
-				if (seconds > 1) {
-					lastSync.append("s");
-				}
+				lastSync.append(", ").append(seconds).append(" second").append(seconds > 1 ? "s" : "");
 			}
 		} else {
 			if(seconds > 0){
-				lastSync.append(seconds).append(" second");
-				if (seconds > 1) {
-					lastSync.append("s");
-				}
+				lastSync.append(seconds).append(" second").append(seconds > 1 ? "s" : "");
 			}
 		}
-		lastSync.append(" ago");
+		return lastSync.append(" ago");
 	}
 
 	public List<GroupRepresentation> getGroupsByUser(String userId) {
