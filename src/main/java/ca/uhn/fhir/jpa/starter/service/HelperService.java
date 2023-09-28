@@ -978,20 +978,25 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 				);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		LocalDate currentLocalDate = currentDate.toLocalDate();
+
+		boolean currentDateNotInDatesList = dates.stream()
+			.map(Date::toLocalDate)
+			.noneMatch(date -> date.equals(currentLocalDate));
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cacheTabularData(facilityId, date, indicators,finalcount,filterString);
 			});
-		}
 
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
-				cachingService.cacheTabularData(facilityId, DateUtilityHelper.getCurrentSqlDate(), indicators,0,filterString);
-			});
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
+					cachingService.cacheTabularData(facilityId, DateUtilityHelper.getCurrentSqlDate(), indicators,0,filterString);
+			}
 		}
 	}
 
@@ -1035,21 +1040,27 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 		);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		LocalDate currentLocalDate = currentDate.toLocalDate();
+
+		boolean currentDateNotInDatesList = dates.stream()
+			.map(Date::toLocalDate)
+			.noneMatch(date -> date.equals(currentLocalDate));
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cachePieChartData(facilityId, date, pieChartDefinitions,finalcount,filterString);
 			});
+
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
+					cachingService.cachePieChartData(facilityId, DateUtilityHelper.getCurrentSqlDate(), pieChartDefinitions,0,filterString);
+			}
 		}
 
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
-				cachingService.cachePieChartData(facilityId, DateUtilityHelper.getCurrentSqlDate(), pieChartDefinitions,0,filterString);
-			});
-		}
 	}
 	public ResponseEntity<?> getTabularDataByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate, LinkedHashMap<String, String> filters,String env) {
 		List<ScoreCardItem> scoreCardItems = new ArrayList<>();
@@ -1254,22 +1265,26 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 				);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		LocalDate currentLocalDate = currentDate.toLocalDate();
+
+		boolean currentDateNotInDatesList = dates.stream()
+			.map(Date::toLocalDate)
+			.noneMatch(date -> date.equals(currentLocalDate));
+
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cacheData(facilityId, date, indicators,finalcount,filterString);
 			});
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
+					cachingService.cacheData(facilityId, DateUtilityHelper.getCurrentSqlDate(), indicators,0,filterString);
+			}
 		}
-
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
-				cachingService.cacheData(facilityId, DateUtilityHelper.getCurrentSqlDate(), indicators,0,filterString);
-			});
-		}
-
 	}
 
 	private void performCachingIfNotPresentForBarChart(List<BarChartDefinition> barCharts, List<String> facilityIds, Date startDate, Date endDate, List<String> fhirSearchList) {
@@ -1310,22 +1325,25 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 		);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		LocalDate currentLocalDate = currentDate.toLocalDate();
+
+		boolean currentDateNotInDatesList = dates.stream()
+			.map(Date::toLocalDate)
+			.noneMatch(date -> date.equals(currentLocalDate));
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cacheDataForBarChart(facilityId, date, barCharts,finalcount,filterString);
 			});
-		}
-
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
 				cachingService.cacheDataForBarChart(facilityId, DateUtilityHelper.getCurrentSqlDate(), barCharts,0,filterString);
-			});
+			}
 		}
-
 	}
 	public ResponseEntity<?> getLineChartByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate, ReportType type,LinkedHashMap<String,String> filters, String env) {
 		notificationDataSource = NotificationDataSource.getInstance();
@@ -1432,20 +1450,24 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 				+"Cache missing days: "+dates.toString()+" "
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 				);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		LocalDate currentLocalDate = currentDate.toLocalDate();
+
+		boolean currentDateNotInDatesList = dates.stream()
+			.map(Date::toLocalDate)
+			.noneMatch(date -> date.equals(currentLocalDate));
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cacheDataLineChart(facilityId, date, lineCharts,finalcount,filterString);
 			});
-		}
-
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
 				cachingService.cacheDataLineChart(facilityId, DateUtilityHelper.getCurrentSqlDate(), lineCharts,0,filterString);
-			});
+			}
 		}
 	}
 
