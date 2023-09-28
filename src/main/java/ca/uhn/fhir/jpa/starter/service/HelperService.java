@@ -31,9 +31,11 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Clob;
 import java.sql.Date;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletRequest;
@@ -122,7 +124,7 @@ public class HelperService {
 	private static  String EXTENSION_PLUSCODE_URL = "http://iprdgroup.org/fhir/Extention/location-plus-code";
 	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
 	private static String SMS_EXTENTION_URL = "http://iprdgroup.com/Extentions/sms-sent";
-
+	private StringBuilder lastSync = new StringBuilder();
 	NotificationDataSource notificationDataSource;
 	LinkedHashMap<String,Pair<List<String>, LinkedHashMap<String, List<String>>>> mapOfIdsAndOrgIdToChildrenMapPair;
 	LinkedHashMap<String,List<OrgItem>> mapOfOrgHierarchy;
@@ -580,6 +582,81 @@ public class HelperService {
 		notificationDataSource = NotificationDataSource.getInstance();
 		List<PatientIdentifierEntity> patientInfoResourceEntities = notificationDataSource.getPatientInfoResourceEntityDataBeyondLastUpdated(lastUpdated);
 		return new ResponseEntity<List<PatientIdentifierEntity>>(patientInfoResourceEntities,HttpStatus.OK);
+	}
+
+	public ResponseEntity<StringBuilder> computeSyncTime(String lga){
+		lastSync.setLength(0);
+		notificationDataSource = NotificationDataSource.getInstance();
+		List<LastSyncEntity> lastSyncData = notificationDataSource.getEntitiesByOrgEnvStatus(lga,"impact-health-v2",ApiAsyncTaskEntity.Status.COMPLETED.name());
+
+		if (!lastSyncData.isEmpty()) {
+			// Get the last item (latest entry)
+			LastSyncEntity latestSyncData = lastSyncData.get(lastSyncData.size() - 1);
+
+			Timestamp lastUpdatedTimestamp = latestSyncData.getEndDateTime();
+			Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+
+			// Calculate the time difference in milliseconds
+			long timeDifferenceMillis = currentTimestamp.getTime() - lastUpdatedTimestamp.getTime();
+
+			// Calculate the number of days, hours, minutes, and seconds
+			long days = TimeUnit.MILLISECONDS.toDays(timeDifferenceMillis);
+			long hours = TimeUnit.MILLISECONDS.toHours(timeDifferenceMillis) % 24;
+			long minutes = TimeUnit.MILLISECONDS.toMinutes(timeDifferenceMillis) % 60;
+			long seconds = TimeUnit.MILLISECONDS.toSeconds(timeDifferenceMillis) % 60;
+
+			// Format the result based on criteria
+			formatTimeDifferenceToHumanReadableString(days, hours, minutes, seconds);
+		} else {
+			lastSync.append("Not found");
+		}
+		return ResponseEntity.ok(lastSync);
+	}
+
+	public void formatTimeDifferenceToHumanReadableString(long days, long hours, long minutes, long seconds) {
+		if (days > 0) {
+			lastSync.append(days).append(" day");
+			if (days > 1) {
+				lastSync.append("s");
+			}
+			if(hours > 0){
+				lastSync.append(", ").append(hours).append(" hour");
+				if (hours > 1) {
+					lastSync.append("s");
+				}
+			}
+		}
+		else if (hours > 0) {
+			lastSync.append(hours).append(" hour");
+			if (hours > 1) {
+				lastSync.append("s");
+			}
+			if(minutes > 0){
+				lastSync.append(", ").append(minutes).append(" minute");
+				if (minutes > 1) {
+					lastSync.append("s");
+				}
+			}
+		} else if (minutes > 0) {
+			lastSync.append(minutes).append(" minute");
+			if (minutes > 1) {
+				lastSync.append("s");
+			}
+			if(seconds > 0){
+				lastSync.append(", ").append(seconds).append(" second");
+				if (seconds > 1) {
+					lastSync.append("s");
+				}
+			}
+		} else {
+			if(seconds > 0){
+				lastSync.append(seconds).append(" second");
+				if (seconds > 1) {
+					lastSync.append("s");
+				}
+			}
+		}
+		lastSync.append(" ago");
 	}
 
 	public List<GroupRepresentation> getGroupsByUser(String userId) {
@@ -1474,7 +1551,9 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 					for (String facilityId : facilityBatch) {
 						Date endDate = Date.valueOf(Date.valueOf(end).toLocalDate().plusDays(1));
 						Date startDate = Date.valueOf(start);
-						cacheDashboardData(facilityId, startDate,endDate, indicators, barCharts, tabularItemList, lineCharts, pieChartDefinitions,countFinal,orgToTiming);
+						LastSyncEntity lastSyncEntity = new LastSyncEntity(facilityId, ApiAsyncTaskEntity.Status.PROCESSING.name(), env, new Timestamp(System.currentTimeMillis()), null);
+						datasource.insert(lastSyncEntity);
+						cacheDashboardData(facilityId, startDate,endDate, indicators, barCharts, tabularItemList, lineCharts, pieChartDefinitions,countFinal,orgToTiming,env);
 						}
 					}
 				};
@@ -1503,7 +1582,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 
 	
 
-	public void cacheDashboardData(String orgId, Date startDate, Date endDate, List<IndicatorItem> indicators, List<BarChartDefinition> barCharts, List<TabularItem> tabularItems, List<LineChart> lineCharts, List<PieChartDefinition> pieChartDefinitions,int count,HashMap <String,Pair<Long,Long>> orgToTiming ) {
+	public void cacheDashboardData(String orgId, Date startDate, Date endDate, List<IndicatorItem> indicators, List<BarChartDefinition> barCharts, List<TabularItem> tabularItems, List<LineChart> lineCharts, List<PieChartDefinition> pieChartDefinitions,int count,HashMap <String,Pair<Long,Long>> orgToTiming, String env ) {
 		notificationDataSource = NotificationDataSource.getInstance();
 		FhirClientProvider fhirClientProvider = new FhirClientProviderImpl((GenericClient) fhirClientAuthenticatorService.getFhirClient());
 		DashboardModel dashboard = ReportGeneratorFactory.INSTANCE.reportGenerator().getOverallDataToCache(
@@ -1534,6 +1613,15 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 					currentDate = Date.valueOf(currentDate.toLocalDate().plusDays(1));
 					Long end = System.nanoTime();
 					diff+= (end-start)/1000000000.0;
+				}
+				try {
+					List<LastSyncEntity> lastSyncData = datasource.getEntitiesByOrgEnvStatus(orgId,env,ApiAsyncTaskEntity.Status.PROCESSING.name());
+					LastSyncEntity lastSyncRecord = (LastSyncEntity) lastSyncData.get(0);
+					lastSyncRecord.setEndDateTime(new Timestamp(System.currentTimeMillis()));
+					lastSyncRecord.setStatus(ApiAsyncTaskEntity.Status.COMPLETED.name());
+					datasource.update(lastSyncRecord);
+				} catch (Exception e) {
+					logger.warn(ExceptionUtils.getStackTrace(e));
 				}
 			   logger.warn("ALL Dates for org ****** "+orgId+" "+String.valueOf(diff));
 //			}
@@ -1854,7 +1942,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 								pluscodeExtension.setValue(pluscodeValue);
 								locationResource.addExtension(pluscodeExtension);
 							}
-							
+
 						}catch (NumberFormatException e){
 							logger.warn("The provided updated latitude or longitude value is non-numeric");
 						}

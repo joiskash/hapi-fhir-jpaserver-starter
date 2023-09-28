@@ -44,7 +44,8 @@ public class NotificationDataSource {
 	public void configure(String filePath) {
 		conf = new Configuration().configure(new File(filePath)).addAnnotatedClass(ComGenerator.class)
 				.addAnnotatedClass(CacheEntity.class).addAnnotatedClass(ApiAsyncTaskEntity.class)
-				.addAnnotatedClass(EncounterIdEntity.class).addAnnotatedClass(PatientIdentifierEntity.class);
+				.addAnnotatedClass(EncounterIdEntity.class).addAnnotatedClass(PatientIdentifierEntity.class)
+				.addAnnotatedClass(LastSyncEntity.class);
 		sf = conf.buildSessionFactory();
 	}
 
@@ -283,6 +284,17 @@ public class NotificationDataSource {
 		Query query = session.createQuery("FROM ApiAsyncTaskEntity WHERE uuid=:param1");
 		query.setParameter("param1", uuid);
 		ArrayList<ApiAsyncTaskEntity> resultList = (ArrayList<ApiAsyncTaskEntity>) query.getResultList();
+		session.close();
+		return resultList;
+	}
+	public List<LastSyncEntity> getEntitiesByOrgEnvStatus(String orgId, String env, String status) {
+		Session session = sf.openSession();
+		Query query = session
+			.createQuery("FROM LastSyncEntity WHERE org_id=:param1 AND envs=:param2 AND status=:param3");
+		query.setParameter("param1", orgId);
+		query.setParameter("param2", env);
+		query.setParameter("param3", status);
+		List<LastSyncEntity> resultList = query.getResultList();
 		session.close();
 		return resultList;
 	}

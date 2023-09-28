@@ -97,6 +97,13 @@ public class DashboardController {
 		return ResponseEntity.ok(helperService.getAsyncData(categoryWithHashCodes));
 	}
 
+
+	@RequestMapping(method = RequestMethod.GET, value = "/lastsynctime")
+	public ResponseEntity<StringBuilder> getLastSyncTime(
+		@RequestParam("lga") String lga){
+		return helperService.computeSyncTime(lga);
+	}
+
 	@RequestMapping(method = RequestMethod.GET, value = "/getTableData/{lastUpdated}")
 	public ResponseEntity<?> getTableData(@PathVariable Long lastUpdated){
 		return helperService.getTableData(lastUpdated);
