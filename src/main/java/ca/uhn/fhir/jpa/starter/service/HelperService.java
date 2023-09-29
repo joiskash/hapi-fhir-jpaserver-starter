@@ -980,11 +980,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 				);
 
 		Date currentDate = new Date(System.currentTimeMillis());
-		LocalDate currentLocalDate = currentDate.toLocalDate();
-
-		boolean currentDateNotInDatesList = dates.stream()
-			.map(Date::toLocalDate)
-			.noneMatch(date -> date.equals(currentLocalDate));
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
 
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
@@ -1042,11 +1038,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		);
 
 		Date currentDate = new Date(System.currentTimeMillis());
-		LocalDate currentLocalDate = currentDate.toLocalDate();
-
-		boolean currentDateNotInDatesList = dates.stream()
-			.map(Date::toLocalDate)
-			.noneMatch(date -> date.equals(currentLocalDate));
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
 
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
@@ -1267,12 +1259,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 				);
 
 		Date currentDate = new Date(System.currentTimeMillis());
-		LocalDate currentLocalDate = currentDate.toLocalDate();
-
-		boolean currentDateNotInDatesList = dates.stream()
-			.map(Date::toLocalDate)
-			.noneMatch(date -> date.equals(currentLocalDate));
-
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
 
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
@@ -1327,11 +1314,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		);
 
 		Date currentDate = new Date(System.currentTimeMillis());
-		LocalDate currentLocalDate = currentDate.toLocalDate();
-
-		boolean currentDateNotInDatesList = dates.stream()
-			.map(Date::toLocalDate)
-			.noneMatch(date -> date.equals(currentLocalDate));
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
 
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
@@ -1452,11 +1435,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 				);
 
 		Date currentDate = new Date(System.currentTimeMillis());
-		LocalDate currentLocalDate = currentDate.toLocalDate();
-
-		boolean currentDateNotInDatesList = dates.stream()
-			.map(Date::toLocalDate)
-			.noneMatch(date -> date.equals(currentLocalDate));
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
 
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
