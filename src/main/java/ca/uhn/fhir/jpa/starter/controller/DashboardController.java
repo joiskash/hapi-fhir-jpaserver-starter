@@ -98,7 +98,7 @@ public class DashboardController {
 	}
 
 
-	@RequestMapping(method = RequestMethod.GET, value = "/lastsynctime")
+	@RequestMapping(method = RequestMethod.GET, value = "/lastSyncTime")
 	public ResponseEntity<?> getLastSyncTime(
 		@RequestHeader(name = "Authorization") String token,
 		@RequestParam("env") String env){

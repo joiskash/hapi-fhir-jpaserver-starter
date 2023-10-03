@@ -49,6 +49,7 @@ import com.iprd.report.model.definition.LineChart;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.hibernate.engine.jdbc.ClobProxy;
+import org.hibernate.HibernateException;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.instance.model.api.IBaseResource;
 import org.hl7.fhir.r4.model.*;
@@ -1597,13 +1598,16 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 					Long end = System.nanoTime();
 					diff+= (end-start)/1000000000.0;
 				}
-				try {
-					List<LastSyncEntity> lastSyncData = datasource.getEntitiesByOrgEnvStatus(orgId,env,ApiAsyncTaskEntity.Status.PROCESSING.name());
-					LastSyncEntity lastSyncRecord = (LastSyncEntity) lastSyncData.get(0);
-					lastSyncRecord.setEndDateTime(new Timestamp(System.currentTimeMillis()));
-					lastSyncRecord.setStatus(ApiAsyncTaskEntity.Status.COMPLETED.name());
-					datasource.update(lastSyncRecord);
-				} catch (Exception e) {
+		List<LastSyncEntity> lastSyncData = datasource.getEntitiesByOrgEnvStatus(orgId,env,ApiAsyncTaskEntity.Status.PROCESSING.name());
+
+		try {
+			if (!lastSyncData.isEmpty()) {
+				LastSyncEntity lastSyncRecord = (LastSyncEntity) lastSyncData.get(0);
+				lastSyncRecord.setEndDateTime(new Timestamp(System.currentTimeMillis()));
+				lastSyncRecord.setStatus(ApiAsyncTaskEntity.Status.COMPLETED.name());
+				datasource.update(lastSyncRecord);
+			}
+				} catch (HibernateException e) {
 					logger.warn(ExceptionUtils.getStackTrace(e));
 				}
 			   logger.warn("ALL Dates for org ****** "+orgId+" "+String.valueOf(diff));
