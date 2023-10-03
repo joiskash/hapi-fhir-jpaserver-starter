@@ -32,7 +32,10 @@ import java.sql.Clob;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -124,6 +127,7 @@ public class HelperService {
 	private static  String EXTENSION_PLUSCODE_URL = "http://iprdgroup.org/fhir/Extention/location-plus-code";
 	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
 	private static String SMS_EXTENTION_URL = "http://iprdgroup.com/Extentions/sms-sent";
+	long millisecondsInADay = 24 * 60 * 60 * 1000; // Number of milliseconds in a day
 	NotificationDataSource notificationDataSource;
 	LinkedHashMap<String,Pair<List<String>, LinkedHashMap<String, List<String>>>> mapOfIdsAndOrgIdToChildrenMapPair;
 	LinkedHashMap<String,List<OrgItem>> mapOfOrgHierarchy;
@@ -583,61 +587,52 @@ public class HelperService {
 		return new ResponseEntity<List<PatientIdentifierEntity>>(patientInfoResourceEntities,HttpStatus.OK);
 	}
 
-	public ResponseEntity<String> computeSyncTime(String lga,String env){
-		StringBuilder lastSyncValue = new StringBuilder();
+	public ResponseEntity<String> computeSyncTime(String practitionerRoleId,String env){
+		String organizationId = getOrganizationIdByPractitionerRoleId(practitionerRoleId);
+		List<Timestamp> facilityWiseTimestamps = new ArrayList<>();
 		notificationDataSource = NotificationDataSource.getInstance();
-		List<LastSyncEntity> lastSyncData = notificationDataSource.getEntitiesByOrgEnvStatus(lga,env,ApiAsyncTaskEntity.Status.COMPLETED.name());
-		if (!lastSyncData.isEmpty()) {
-			// Get the last item (latest entry)
-			LastSyncEntity latestSyncData = lastSyncData.get(lastSyncData.size() - 1);
 
-			Timestamp lastUpdatedTimestamp = latestSyncData.getEndDateTime();
-			Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+		Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(organizationId);
 
-			// Calculate the time difference in milliseconds
-			long timeDifferenceMillis = currentTimestamp.getTime() - lastUpdatedTimestamp.getTime();
+		// Get the current date and time
+		Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+		long fiveDaysAgoMillis = currentTimestamp.getTime() - (5 * millisecondsInADay);
+		Timestamp fiveDaysAgoTimestamp = new Timestamp(fiveDaysAgoMillis);
 
-			// Calculate the number of days, hours, minutes, and seconds
-			long days = TimeUnit.MILLISECONDS.toDays(timeDifferenceMillis);
-			long hours = TimeUnit.MILLISECONDS.toHours(timeDifferenceMillis) % 24;
-			long minutes = TimeUnit.MILLISECONDS.toMinutes(timeDifferenceMillis) % 60;
-			long seconds = TimeUnit.MILLISECONDS.toSeconds(timeDifferenceMillis) % 60;
+		List<LastSyncEntity> lastSyncData = notificationDataSource.fetchLastSyncEntitiesByOrgs(idsAndOrgIdToChildrenMapPair.first,env,ApiAsyncTaskEntity.Status.COMPLETED.name(),fiveDaysAgoTimestamp);
 
-			// Format the result based on criteria
-			lastSyncValue = formatTimeDifferenceToHumanReadableString(days, hours, minutes, seconds);
+		// Group the data by organization ID
+		Map<String, List<LastSyncEntity>> groupedData = lastSyncData.stream()
+			.collect(Collectors.groupingBy(LastSyncEntity::getOrgId));
 
-			if (days > 0 || hours > 0 || minutes > 0 || seconds > 0) {
-				return ResponseEntity.ok(formatTimeDifferenceToHumanReadableString(days, hours, minutes, seconds).toString());
+		// Sort each group by startDateTime
+		groupedData.values().forEach(list -> list.sort(Comparator.comparing(LastSyncEntity::getStartDateTime)));
+
+		// Loop through the grouped data
+		for (List<LastSyncEntity> entityList : groupedData.values()) {
+			if (!entityList.isEmpty()) {
+				// Get the last element in the list
+				LastSyncEntity lastEntity = entityList.get(entityList.size() - 1);
+
+				// Check if endDateTime is not null
+				if (lastEntity.getEndDateTime() != null) {
+					// Add it to facilityWiseTimestamps
+					facilityWiseTimestamps.add(lastEntity.getEndDateTime());
+				}
 			}
+		}
+
+		// Find the oldest timestamp
+		Timestamp oldestTimestamp = facilityWiseTimestamps.stream()
+			.min(Timestamp::compareTo)
+			.orElse(null);
+		if (oldestTimestamp != null) {
+			return ResponseEntity.ok(Utils.calculateAndFormatTimeDifference(oldestTimestamp));
 		}
 		return ResponseEntity.ok("Not found");
 	}
 
-	public StringBuilder formatTimeDifferenceToHumanReadableString(long days, long hours, long minutes, long seconds) {
-		StringBuilder lastSync = new StringBuilder();
-		if (days > 0) {
-			lastSync.append(days).append(" day").append(days > 1 ? "s" : "");
-			if(hours > 0){
-				lastSync.append(", ").append(hours).append(" hour").append(hours > 1 ? "s" : "");
-			}
-		}
-		else if (hours > 0) {
-			lastSync.append(hours).append(" hour").append(hours > 1 ? "s" : "");
-			if(minutes > 0){
-				lastSync.append(", ").append(minutes).append(" minute").append(minutes > 1 ? "s" : "");
-			}
-		} else if (minutes > 0) {
-			lastSync.append(minutes).append(" minute").append(minutes > 1 ? "s" : "");
-			if(seconds > 0){
-				lastSync.append(", ").append(seconds).append(" second").append(seconds > 1 ? "s" : "");
-			}
-		} else {
-			if(seconds > 0){
-				lastSync.append(seconds).append(" second").append(seconds > 1 ? "s" : "");
-			}
-		}
-		return lastSync.append(" ago");
-	}
+
 
 	public List<GroupRepresentation> getGroupsByUser(String userId) {
 		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
@@ -728,6 +723,14 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		catch (Exception e) {
 			logger.warn("Caching task failed "+ExceptionUtils.getStackTrace(e));
 		}
+	}
+
+	@Scheduled(cron = "0 0 23 1 * ?")
+	public void cleanupLastSyncStatusTable() {
+		// Get the current date and time
+		Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
+		notificationDataSource = NotificationDataSource.getInstance();
+		notificationDataSource.clearLastSyncStatusTable(new Timestamp(currentTimestamp.getTime() - (30 * millisecondsInADay)));
 	}
 
 	public Bundle getEncountersBelowLocation(String locationId) {

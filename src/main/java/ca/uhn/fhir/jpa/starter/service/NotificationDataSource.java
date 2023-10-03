@@ -2,6 +2,7 @@ package ca.uhn.fhir.jpa.starter.service;
 
 import java.io.File;
 import java.sql.Date;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -290,10 +291,24 @@ public class NotificationDataSource {
 	public List<LastSyncEntity> getEntitiesByOrgEnvStatus(String orgId, String env, String status) {
 		Session session = sf.openSession();
 		Query query = session
-			.createQuery("FROM LastSyncEntity WHERE org_id=:param1 AND envs=:param2 AND status=:param3");
+			.createQuery("FROM LastSyncEntity WHERE org_id=:param1 AND envs=:param2 AND status=:param3 ORDER BY start_date_time DESC");
 		query.setParameter("param1", orgId);
 		query.setParameter("param2", env);
 		query.setParameter("param3", status);
+		query.setMaxResults(1); // Limit the result to 1 row
+		List<LastSyncEntity> resultList = query.getResultList();
+		session.close();
+		return resultList;
+	}
+
+	public List<LastSyncEntity> fetchLastSyncEntitiesByOrgs(List<String> orgId, String env, String status, Timestamp startDateTime) {
+		Session session = sf.openSession();
+		Query query = session
+			.createQuery("FROM LastSyncEntity WHERE org_id IN (:param1) AND envs=:param2 AND status=:param3 AND start_date_time > :param4");
+		query.setParameter("param1", orgId);
+		query.setParameter("param2", env);
+		query.setParameter("param3", status);
+		query.setParameter("param4", startDateTime);
 		List<LastSyncEntity> resultList = query.getResultList();
 		session.close();
 		return resultList;
@@ -454,6 +469,16 @@ public class NotificationDataSource {
 		Session session = sf.openSession();
 		Transaction transaction = session.beginTransaction();
 		Query query = session.createQuery("DELETE ApiAsyncTaskEntity");
+		query.executeUpdate();
+		transaction.commit();
+		session.close();
+	}
+
+	public void clearLastSyncStatusTable(Timestamp date) {
+		Session session = sf.openSession();
+		Transaction transaction = session.beginTransaction();
+		Query query = session.createQuery("DELETE LastSyncEntity WHERE start_date_time < :param1");
+		query.setParameter("param1", date);
 		query.executeUpdate();
 		transaction.commit();
 		session.close();
