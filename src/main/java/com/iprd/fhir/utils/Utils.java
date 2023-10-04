@@ -481,25 +481,4 @@ public class Utils {
 			return null;
 		}
 	}
-
-// Don't remove this function. This may be utilised later
-/*	public static List<String> getKeysForMapCache(List<String> allClinics, String from, String to){
-		ArrayList<String> categories = new ArrayList<String>(Arrays.asList("antenatal", "postnatal", "child-birth", "family-planning"));
-		List<String> result = new ArrayList<>();
-		DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-		LocalDate startDateParsed = LocalDate.parse(from, dateFormatter);
-		LocalDate endDateParsed = LocalDate.parse(to, dateFormatter);
-		AtomicReference<LocalDate> currentDate = new AtomicReference<>(startDateParsed);
-		allClinics.parallelStream().forEach(character -> {
-			categories.parallelStream().forEach(category -> {
-				while (!currentDate.get().isAfter(endDateParsed)) {
-					String formattedDate = currentDate.get().format(dateFormatter);
-					result.add(formattedDate + "_" + character + "_" + category);
-					currentDate.set(currentDate.get().plusDays(1));
-				}
-				currentDate.set(startDateParsed);
-			});
-		});
-		return result;
-	} */
 }

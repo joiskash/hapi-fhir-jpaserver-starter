@@ -59,9 +59,9 @@
             <version>${jetty_version}</version>
         </dependency>
         <dependency>
-            <groupId>org.opencampaignlink</groupId>
+            <groupId>org.opencampaignlink.</groupId>
             <artifactId>report-generator-jvm</artifactId>
-            <version>1.0.29</version>
+            <version>1.0.32</version>
         </dependency>
         <dependency>
             <groupId>org.keycloak</groupId>
