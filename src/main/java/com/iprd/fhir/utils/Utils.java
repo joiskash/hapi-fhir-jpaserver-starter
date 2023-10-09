@@ -12,10 +12,12 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.sql.Timestamp;
+import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.zip.GZIPOutputStream;
+import java.time.LocalDate;
 
 public class Utils {
 	public static final int SHORT_ID_LENGTH = 12;
@@ -525,6 +527,14 @@ public class Utils {
 			return (formatTimeDifferenceToHumanReadableString(days, hours, minutes, seconds).toString());
 		}
 		return "Not found";
+	}
+
+
+	public static boolean noneMatchDates(List<Date> dates, Date currentDate) {
+		LocalDate currentLocalDate = currentDate.toLocalDate();
+		return dates.stream()
+			.map(Date::toLocalDate)
+			.noneMatch(date -> date.equals(currentLocalDate));
 	}
 
 }
