@@ -49,7 +49,7 @@ public class NotificationDataSource {
 	public void configure(String filePath) {
 		conf = new Configuration().configure(new File(filePath)).addAnnotatedClass(ComGenerator.class)
 				.addAnnotatedClass(CacheEntity.class).addAnnotatedClass(MapCacheEntity.class).addAnnotatedClass(ApiAsyncTaskEntity.class)
-				.addAnnotatedClass(EncounterIdEntity.class).addAnnotatedClass(PatientIdentifierEntity.class);
+				.addAnnotatedClass(EncounterIdEntity.class).addAnnotatedClass(PatientIdentifierEntity.class)
 				.addAnnotatedClass(CacheEntity.class).addAnnotatedClass(ApiAsyncTaskEntity.class)
 				.addAnnotatedClass(EncounterIdEntity.class).addAnnotatedClass(PatientIdentifierEntity.class)
 				.addAnnotatedClass(LastSyncEntity.class);
