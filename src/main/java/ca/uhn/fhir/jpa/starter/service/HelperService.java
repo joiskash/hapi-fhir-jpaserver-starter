@@ -1,12 +1,13 @@
 package ca.uhn.fhir.jpa.starter.service;
 
 import android.util.Pair;
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.jpa.starter.*;
+import ca.uhn.fhir.jpa.starter.AppProperties;
+import ca.uhn.fhir.jpa.starter.AsyncConfiguration;
+import ca.uhn.fhir.jpa.starter.DashboardConfigContainer;
+import ca.uhn.fhir.jpa.starter.DashboardEnvironmentConfig;
 import ca.uhn.fhir.jpa.starter.model.*;
 import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.impl.GenericClient;
-import ca.uhn.fhir.rest.client.interceptor.BearerTokenAuthInterceptor;
 import ca.uhn.fhir.rest.gclient.ICriterion;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import ca.uhn.fhir.rest.gclient.TokenClientParam;
@@ -19,28 +20,8 @@ import com.iprd.report.model.FilterItem;
 import com.iprd.report.model.FilterOptions;
 import com.iprd.report.model.data.*;
 import com.iprd.report.model.definition.*;
-import android.util.Pair;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.sql.Clob;
-import java.sql.Date;
-import java.sql.SQLException;
-import java.time.LocalDate;
-import java.util.*;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
-import com.iprd.report.model.definition.BarComponent;
-import com.iprd.report.model.definition.LineChart;
+import lombok.Getter;
+import lombok.Setter;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.hibernate.engine.jdbc.ClobProxy;
@@ -50,10 +31,8 @@ import org.hl7.fhir.r4.model.*;
 import org.hl7.fhir.r4.model.Bundle.*;
 import org.hl7.fhir.r4.model.Location.LocationPositionComponent;
 import org.keycloak.admin.client.CreatedResponseUtil;
-import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.resource.GroupResource;
 import org.keycloak.admin.client.resource.RealmResource;
-import org.keycloak.admin.client.token.TokenManager;
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -83,6 +62,7 @@ import java.sql.Clob;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.Future;
 import java.util.function.Function;
@@ -385,7 +365,7 @@ public class HelperService {
 			}
 			String hcwData[] = singleLine.split(",");
 			//firstName(0),lastName(1),email(2),countryCode(3),phoneNumber(4),gender(5),birthDate(6),keycloakUserName(7),
-			// initialPassword(8),state(9),lga(10),ward(11),facilityUID(12),role(13),qualification(14),stateIdentifier(15), Argusoft Identifier(16)
+			// initialPassword(8),state(9),lga(10),ward(11),facilityUID(12),role(13),qualification(14),stateIdentifier(15), Argusoft Identifier(16), Country(17)
 			String firstName = hcwData[0];
 			String lastName = hcwData[1];
 			String email = hcwData[2];
@@ -664,7 +644,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			for(String orgId : orgIdsForCaching) {
 				for (String envs : envsForCaching) {
 					Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(orgId);
-					cacheDashboardData(idsAndOrgIdToChildrenMapPair.first, String.valueOf(LocalDate.now().minusDays(31)), String.valueOf(LocalDate.now().minusDays(1)), envs);
+					cacheDashboardData(idsAndOrgIdToChildrenMapPair.first, String.valueOf(LocalDate.now().minusDays(31)), String.valueOf(LocalDate.now()), envs);
 				}
 			}
 		}
@@ -988,20 +968,21 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 				);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cacheTabularData(facilityId, date, indicators,finalcount,filterString);
 			});
-		}
 
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
-				cachingService.cacheTabularData(facilityId, DateUtilityHelper.getCurrentSqlDate(), indicators,0,filterString);
-			});
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
+					cachingService.cacheTabularData(facilityId, DateUtilityHelper.getCurrentSqlDate(), indicators,0,filterString);
+			}
 		}
 	}
 
@@ -1045,21 +1026,23 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 		);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cachePieChartData(facilityId, date, pieChartDefinitions,finalcount,filterString);
 			});
+
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
+					cachingService.cachePieChartData(facilityId, DateUtilityHelper.getCurrentSqlDate(), pieChartDefinitions,0,filterString);
+			}
 		}
 
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
-				cachingService.cachePieChartData(facilityId, DateUtilityHelper.getCurrentSqlDate(), pieChartDefinitions,0,filterString);
-			});
-		}
 	}
 	public ResponseEntity<?> getTabularDataByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate, LinkedHashMap<String, String> filters,String env) {
 		List<ScoreCardItem> scoreCardItems = new ArrayList<>();
@@ -1264,22 +1247,21 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 				);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cacheData(facilityId, date, indicators,finalcount,filterString);
 			});
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
+					cachingService.cacheData(facilityId, DateUtilityHelper.getCurrentSqlDate(), indicators,0,filterString);
+			}
 		}
-
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
-				cachingService.cacheData(facilityId, DateUtilityHelper.getCurrentSqlDate(), indicators,0,filterString);
-			});
-		}
-
 	}
 
 	private void performCachingIfNotPresentForBarChart(List<BarChartDefinition> barCharts, List<String> facilityIds, Date startDate, Date endDate, List<String> fhirSearchList) {
@@ -1320,22 +1302,21 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 				+"Cache missing days: "+dates.toString()
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 		);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cacheDataForBarChart(facilityId, date, barCharts,finalcount,filterString);
 			});
-		}
-
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
 				cachingService.cacheDataForBarChart(facilityId, DateUtilityHelper.getCurrentSqlDate(), barCharts,0,filterString);
-			});
+			}
 		}
-
 	}
 	public ResponseEntity<?> getLineChartByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate, ReportType type,LinkedHashMap<String,String> filters, String env) {
 		notificationDataSource = NotificationDataSource.getInstance();
@@ -1442,20 +1423,20 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 				+"Cache missing days: "+dates.toString()+" "
 				+"Cache missing indicators days: "+nonExistingIndicators.toString()
 				);
+
+		Date currentDate = new Date(System.currentTimeMillis());
+		boolean currentDateNotInDatesList = Utils.noneMatchDates(dates,currentDate);
+
 		for(int count=0; count<facilityIds.size();count++) {
 			String facilityId = facilityIds.get(count);
 			final int finalcount = count;
 			dates.forEach(date -> {
 				cachingService.cacheDataLineChart(facilityId, date, lineCharts,finalcount,filterString);
 			});
-		}
-
-		Date currentDate = DateUtilityHelper.getCurrentSqlDate();
-		//Always cache current date data if it lies between start and end date.
-		if (currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
-			facilityIds.forEach(facilityId -> {
+			//Always cache current date data if it lies between start and end date.
+			if (currentDateNotInDatesList && currentDate.getTime() >= startDate.getTime() && currentDate.getTime() <= Date.valueOf(endDate.toLocalDate().plusDays(1)).getTime()) {
 				cachingService.cacheDataLineChart(facilityId, DateUtilityHelper.getCurrentSqlDate(), lineCharts,0,filterString);
-			});
+			}
 		}
 	}
 
@@ -1471,6 +1452,7 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		List<TabularItem> tabularItemList = getTabularItemListFromFile(env);
 		ThreadPoolTaskExecutor executor =  asyncConf.asyncExecutor();
 		HashMap <String,Pair<Long,Long>> orgToTiming = new HashMap();
+		cachingService.cacheMapData(facilities, start, end);
 		List<List<String>> facilityBatches = Utils.partitionFacilities(facilities, appProperties.getExecutor_max_pool_size());
 		int count = 0;
 		long startTime = System.nanoTime();
@@ -1867,7 +1849,6 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 								pluscodeExtension.setValue(pluscodeValue);
 								locationResource.addExtension(pluscodeExtension);
 							}
-							
 						}catch (NumberFormatException e){
 							logger.warn("The provided updated latitude or longitude value is non-numeric");
 						}
@@ -1990,5 +1971,73 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 			}
 		}
 		return null;
+	}
+
+	public List<MapResponse> getEncounterForMap(String orgId, String from, String to){
+		Gson gson = new Gson();
+		notificationDataSource = NotificationDataSource.getInstance();
+		List<String> allClinics = fetchIdsAndOrgIdToChildrenMapPair(orgId).first;
+		try{
+//			cachingService.performCachingForMapDataIfRequired(allClinics, from, to);
+			List<MapCacheEntity> responseFromCache = notificationDataSource.getMapDataByOrgIdAndDateRange(allClinics, Date.valueOf(LocalDate.parse(from, DateTimeFormatter.ISO_DATE)) , Date.valueOf(LocalDate.parse(to, DateTimeFormatter.ISO_DATE)));
+			if(responseFromCache.isEmpty()){
+				cachingService.cacheMapData(allClinics, from, to);
+				responseFromCache = notificationDataSource.getMapDataByOrgIdAndDateRange(allClinics, Date.valueOf(LocalDate.parse(from, DateTimeFormatter.ISO_DATE)) , Date.valueOf(LocalDate.parse(to, DateTimeFormatter.ISO_DATE)));
+			}
+			LinkedHashMap<String, ArrayList<LocationData>> categoryWiseResponse = new LinkedHashMap<>();
+			for(MapCacheEntity entry: responseFromCache){
+				String categoryId = entry.getCategoryId();
+				if(categoryWiseResponse.containsKey(categoryId)){
+					ArrayList<LocationData> locationDataList = categoryWiseResponse.get(categoryId);
+					LocationData lastAddLocationData = locationDataList.get(locationDataList.size()-1);
+					if(lastAddLocationData.getLat().equals(entry.getLat()) && lastAddLocationData.getLng().equals(entry.getLng())){
+						lastAddLocationData.setWeight(lastAddLocationData.getWeight() + entry.getWeight());
+						locationDataList.set(locationDataList.size()-1, lastAddLocationData);
+					}else{
+						LocationData newLocationData = new LocationData();
+						newLocationData.setLat(entry.getLat());
+						newLocationData.setLng(entry.getLng());
+						newLocationData.setWeight(entry.getWeight());
+						locationDataList.add(newLocationData);
+					}
+					categoryWiseResponse.put(categoryId, locationDataList);
+				}
+				else {
+					LocationData newLocationData = new LocationData();
+					newLocationData.setLat(entry.getLat());
+					newLocationData.setLng(entry.getLng());
+					newLocationData.setWeight(entry.getWeight());
+					ArrayList<LocationData> locationDataList = new ArrayList<>();
+					locationDataList.add(newLocationData);
+					categoryWiseResponse.put(categoryId, locationDataList);
+				}
+			}
+			List<MapResponse> mapResponse = new ArrayList<>();
+			for(Map.Entry<String, ArrayList<LocationData>> categoryWiseEntry: categoryWiseResponse.entrySet()){
+				MapResponse response = new MapResponse();
+				response.setCategoryId(categoryWiseEntry.getKey());
+				response.setCategoryResult(categoryWiseEntry.getValue());
+				mapResponse.add(response);
+			}
+			return mapResponse;
+		}catch (Exception e){
+			logger.warn(e.toString());
+		}
+		return null;
+	}
+
+	@Getter
+	@Setter
+	public class LocationData{
+		private Double lat;
+		private Double lng;
+		private int weight;
+	}
+
+	@Getter
+	@Setter
+	public class MapResponse{
+		private String categoryId;
+		private ArrayList<LocationData> categoryResult;
 	}
 }
