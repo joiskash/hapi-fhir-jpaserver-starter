@@ -5,6 +5,37 @@ entries:
       artifacthub.io/changes: |
         # When using the list of objects option the valid supported kinds are
         # added, changed, deprecated, removed, fixed, and security.
+        - kind: added
+          description: allow specifying application properties via yaml config
+        - kind: added
+          description: allow setting resource limits and requests for the Helm test pods
+        - kind: changed
+          description: updated curl used by helm tests to version to v8.2.0
+        - kind: changed
+          description: allow disabling the liveness-, readiness-, and startup-probes entirely
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 6.6.0
+    created: "2023-10-16T05:23:29.721921817Z"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 12.5.6
+    description: A Helm chart for deploying the HAPI FHIR JPA server starter on Kubernetes.
+    digest: 893d482b05137b000b2a784ce7ced20b0b8babdc1d3fa578d81fcf278e0b9f86
+    home: https://github.com/hapifhir/hapi-fhir-jpaserver-starter
+    name: hapi-fhir-jpaserver
+    sources:
+    - https://github.com/hapifhir/hapi-fhir-jpaserver-starter
+    type: application
+    urls:
+    - https://github.com/joiskash/hapi-fhir-jpaserver-starter/releases/download/helm-v0.13.0/hapi-fhir-jpaserver-0.13.0.tgz
+    version: 0.13.0
+  - annotations:
+      artifacthub.io/changes: |
+        # When using the list of objects option the valid supported kinds are
+        # added, changed, deprecated, removed, fixed, and security.
         - kind: changed
           description: updated HAPI FHIR JPA Server app image version to v6.6.0
         - kind: changed
@@ -87,4 +118,4 @@ entries:
     urls:
     - https://github.com/hapifhir/hapi-fhir-jpaserver-starter/releases/download/helm-v0.6.0/hapi-fhir-jpaserver-0.6.0.tgz
     version: 0.6.0
-generated: "2023-07-10T17:05:37.854218333Z"
+generated: "2023-10-16T05:23:29.721956019Z"
