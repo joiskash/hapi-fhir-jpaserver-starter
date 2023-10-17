@@ -3,7 +3,6 @@ package ca.uhn.fhir.jpa.starter;
 import java.util.List;
 
 import ca.uhn.fhir.jpa.starter.model.CategoryItem;
-import ca.uhn.fhir.jpa.starter.model.EnvironmentOption;
 import ca.uhn.fhir.jpa.starter.model.ScoreCardIndicatorItem;
 import com.iprd.report.model.FilterItem;
 import com.iprd.report.model.definition.LineChart;
@@ -55,15 +54,9 @@ public class DashboardConfigContainer {
 	public CategoryItem getCategoryItem() {
 		return categoryItem;
 	}
-	public EnvironmentOption getEnvironmentOption() {
-		return environmentOption;
-	}
 
 	public void setCategoryItem(CategoryItem categoryItem) {
 		this.categoryItem = categoryItem;
-	}
-	public void setEnvironmentOption(EnvironmentOption environmentOption) {
-		this.environmentOption = environmentOption;
 	}
 
 	public List<IndicatorItem> getAnalyticsIndicatorItems() {
@@ -87,5 +80,4 @@ public class DashboardConfigContainer {
 	private List<IndicatorItem> analyticsIndicatorItems;
 	private List<ANCDailySummaryConfig> ancDailySummaryConfig;
 	private CategoryItem categoryItem;
-	private EnvironmentOption environmentOption;
 }

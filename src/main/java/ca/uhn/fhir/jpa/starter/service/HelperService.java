@@ -805,14 +805,17 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 
 	public ResponseEntity<?> getEnvironmentOptions() {
 		try {
-			EnvironmentOption environmentOption = getEnvironmentOptionsFromFile();
-			return ResponseEntity.ok(environmentOption);
+			List<String> keyList = new ArrayList<>(dashboardEnvToConfigMap.keySet());
+			List<String> environmentOptions = new ArrayList<>();
+			for (String key : keyList) {
+				environmentOptions.add(key.toString());
+			}
+			return ResponseEntity.ok(environmentOptions);
 		} catch (NullPointerException e) {
 			logger.warn(ExceptionUtils.getStackTrace(e));
 			return ResponseEntity.ok("Error: Environment Config File Not Found");
 		}
 	}
-
 
 	public ResponseEntity<?> getBarChartDefinition(String env) {
 		try {
@@ -1557,9 +1560,6 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 
 	CategoryItem getCategoriesFromFile(String env) throws NullPointerException{
 		return dashboardEnvToConfigMap.get(env).getCategoryItem();
-	}
-	EnvironmentOption getEnvironmentOptionsFromFile() throws NullPointerException{
-		return dashboardEnvToConfigMap.get("environment").getEnvironmentOption();
 	}
 
 	List<BarChartDefinition> getBarChartItemListFromFile(String env) throws NullPointerException{

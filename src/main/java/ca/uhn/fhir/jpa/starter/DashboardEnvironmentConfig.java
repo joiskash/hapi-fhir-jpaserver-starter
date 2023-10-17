@@ -8,7 +8,6 @@ import java.util.List;
 import java.util.Map;
 
 import ca.uhn.fhir.jpa.starter.model.CategoryItem;
-import ca.uhn.fhir.jpa.starter.model.EnvironmentOption;
 import com.iprd.report.model.FilterItem;
 import ca.uhn.fhir.jpa.starter.model.ScoreCardIndicatorItem;
 import com.iprd.report.model.definition.BarChartDefinition;
@@ -116,9 +115,6 @@ public class DashboardEnvironmentConfig {
 						case CATEGORY_DEFINITIONS: {
 							envConfigContainer.setCategoryItem(new Gson().fromJson(reader, CategoryItem.class));
 							break;
-						}
-						case ENVIRONMENT_DEFINITIONS: {
-							envConfigContainer.setEnvironmentOption(new Gson().fromJson(reader, EnvironmentOption.class));
 						}
 					}
 				} catch (FileNotFoundException e) {
