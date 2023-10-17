@@ -20,7 +20,7 @@ import com.iprd.report.model.FilterItem;
 import com.iprd.report.model.FilterOptions;
 import com.iprd.report.model.data.*;
 import com.iprd.report.model.definition.*;
-import android.util.Pair;
+
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -33,13 +33,9 @@ import java.sql.Clob;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Timestamp;
-import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
 import java.util.*;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
 import javax.servlet.http.HttpServletRequest;
@@ -77,24 +73,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.PostConstruct;
-import javax.servlet.http.HttpServletRequest;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Response;
 import java.io.*;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.net.*;
-import java.nio.charset.StandardCharsets;
-import java.sql.Clob;
-import java.sql.Date;
-import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.concurrent.Future;
 import java.util.function.Function;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.hibernate.search.util.common.impl.CollectionHelper.asList;
@@ -598,9 +579,7 @@ public class HelperService {
 		Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(organizationId);
 
 		// Get the current date and time
-		Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
-		long fiveDaysAgoMillis = currentTimestamp.getTime() - (5 * millisecondsInADay);
-		Timestamp fiveDaysAgoTimestamp = new Timestamp(fiveDaysAgoMillis);
+		Timestamp fiveDaysAgoTimestamp = new Timestamp(DateUtilityHelper.calculateMillisecondsRelativeToCurrentTime(5));
 
 		List<LastSyncEntity> lastSyncData = notificationDataSource.fetchLastSyncEntitiesByOrgs(idsAndOrgIdToChildrenMapPair.first,env,ApiAsyncTaskEntity.Status.COMPLETED.name(),fiveDaysAgoTimestamp);
 
@@ -731,9 +710,8 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 	@Scheduled(cron = "0 0 23 1 * ?")
 	public void cleanupLastSyncStatusTable() {
 		// Get the current date and time
-		Timestamp currentTimestamp = new Timestamp(System.currentTimeMillis());
 		notificationDataSource = NotificationDataSource.getInstance();
-		notificationDataSource.clearLastSyncStatusTable(new Timestamp(currentTimestamp.getTime() - (30 * millisecondsInADay)));
+		notificationDataSource.clearLastSyncStatusTable(new Timestamp(DateUtilityHelper.calculateMillisecondsRelativeToCurrentTime(30)));
 	}
 
 	public Bundle getEncountersBelowLocation(String locationId) {
