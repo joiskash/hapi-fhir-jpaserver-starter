@@ -805,11 +805,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 
 	public ResponseEntity<?> getEnvironmentOptions() {
 		try {
-			List<String> keyList = new ArrayList<>(dashboardEnvToConfigMap.keySet());
-			List<String> environmentOptions = new ArrayList<>();
-			for (String key : keyList) {
-				environmentOptions.add(key.toString());
-			}
+			List<String> environmentOptions = new ArrayList<>(dashboardEnvToConfigMap.keySet());
 			return ResponseEntity.ok(environmentOptions);
 		} catch (NullPointerException e) {
 			logger.warn(ExceptionUtils.getStackTrace(e));
