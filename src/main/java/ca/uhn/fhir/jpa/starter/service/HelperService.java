@@ -267,7 +267,6 @@ public class HelperService {
 				continue;
 			}
 
-//			String group_id = getKeycloakGroupId(facilityUID);
 			String group_id = null; // Initializing to "no-value"
 			GroupRepresentation keycloakGroup = getKeycloakGroupId(facilityUID);
 			if(null != keycloakGroup) {
