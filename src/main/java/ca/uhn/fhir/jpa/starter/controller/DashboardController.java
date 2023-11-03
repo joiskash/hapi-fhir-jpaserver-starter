@@ -191,7 +191,7 @@ public class DashboardController {
 		}
 		LinkedHashMap<String, String> filters = new LinkedHashMap<>();
 		filters.putAll(allFilters);
-		return helperService.getLineChartByPractitionerRoleId(practitionerRoleId, startDate, endDate, type,filters,env,lga);
+		return helperService.getLineChartByPractitionerRoleId(startDate, endDate, type,filters,env,lga);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/pieChartData")
