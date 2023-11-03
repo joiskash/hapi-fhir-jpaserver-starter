@@ -894,7 +894,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 	}
 
 
-	public ResponseEntity<?> getPieChartDataByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate,LinkedHashMap<String,String> filters, String env, String lga){
+	public ResponseEntity<?> getPieChartDataByPractitionerRoleId(String startDate, String endDate,LinkedHashMap<String,String> filters, String env, String lga){
 		notificationDataSource = NotificationDataSource.getInstance();
 
 		List<PieChartDefinition> pieChartDefinitions = getPieChartItemDefinitionFromFile(env);
@@ -1190,7 +1190,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 		return ResponseEntity.ok(scoreCardResponseItems);
 	}
 
-public ResponseEntity<?> getBarChartData(String practitionerRoleId, String startDate, String endDate,LinkedHashMap<String,String> filters, String env, String lga) {
+public ResponseEntity<?> getBarChartData(String startDate, String endDate,LinkedHashMap<String,String> filters, String env, String lga) {
 	notificationDataSource = NotificationDataSource.getInstance();
 	List<BarChartItemDataCollection> barChartItems = new ArrayList<>();
 	List<BarChartDefinition> barCharts = getBarChartItemListFromFile(env);

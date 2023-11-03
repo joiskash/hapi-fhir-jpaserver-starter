@@ -212,7 +212,7 @@ public class DashboardController {
 		LinkedHashMap<String, String> filters = new LinkedHashMap<>();
 		filters.putAll(allFilters);
 
-		return helperService.getPieChartDataByPractitionerRoleId(practitionerRoleId, startDate, endDate,filters,env,lga);
+		return helperService.getPieChartDataByPractitionerRoleId(startDate, endDate,filters,env,lga);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/tabularData")
@@ -266,7 +266,7 @@ public class DashboardController {
 		}
 		LinkedHashMap<String, String> filters = new LinkedHashMap<>();
 		filters.putAll(allFilters);
-		return helperService.getBarChartData(practitionerRoleId, startDate, endDate,filters,env,lga);
+		return helperService.getBarChartData(startDate, endDate,filters,env,lga);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/analytics")
