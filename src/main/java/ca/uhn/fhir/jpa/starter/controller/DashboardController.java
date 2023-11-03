@@ -234,7 +234,7 @@ public class DashboardController {
 			return ResponseEntity.ok("Error : Practitioner Role Id not found in token");
 		}
 		LinkedHashMap<String, String> filters = new LinkedHashMap<>(allFilters);
-		return helperService.getTabularDataByPractitionerRoleId(practitionerRoleId, startDate, endDate, filters,env,lga);
+		return helperService.getTabularDataByPractitionerRoleId(startDate, endDate, filters,env,lga);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/refreshMapToOrgId")

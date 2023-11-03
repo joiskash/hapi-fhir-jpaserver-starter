@@ -1052,7 +1052,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 			});
 		}
 	}
-	public ResponseEntity<?> getTabularDataByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate, LinkedHashMap<String, String> filters,String env, String lga) {
+	public ResponseEntity<?> getTabularDataByPractitionerRoleId(String startDate, String endDate, LinkedHashMap<String, String> filters,String env, String lga) {
 		List<ScoreCardItem> scoreCardItems = new ArrayList<>();
 		List<TabularItem> tabularItemList = getTabularItemListFromFile(env);
 		List<String> fhirSearchList = getFhirSearchListByFilters(filters,env);
