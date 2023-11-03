@@ -1328,7 +1328,7 @@ public ResponseEntity<?> getBarChartData(String startDate, String endDate,Linked
 		}
 
 	}
-	public ResponseEntity<?> getLineChartByPractitionerRoleId(String startDate, String endDate, ReportType type,LinkedHashMap<String,String> filters, String env, String lga) {
+	public ResponseEntity<?> getLineChartByPractitionerRoleId(String startDate, String endDate, ReportType type, LinkedHashMap<String,String> filters, String env, String lga) {
 		notificationDataSource = NotificationDataSource.getInstance();
 		List<LineChartItemCollection> lineChartItemCollections = new ArrayList<>();
 		List<LineChart> lineCharts = getLineChartDefinitionsItemListFromFile(env);
