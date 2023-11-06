@@ -714,7 +714,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 	}
 
 	//@Scheduled(fixedDelay = 300000)
-	@Scheduled(cron = "0 */3 * ? * *")
+	@Scheduled(cron = "0 0 23 * * *")
 	public void refreshSyncForCurrentMonth() {
 		try {
 			List<String> orgIdsForCaching = appProperties.getOrganization_ids_for_caching();
@@ -725,19 +725,17 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 					cacheDashboardData(idsAndOrgIdToChildrenMapPair.first, String.valueOf(LocalDate.now().minusDays(31)), String.valueOf(LocalDate.now()), envs);
 				}
 			}
-			logger.warn("Last sync cache after 3 min 🚀");
 		}
 		catch (Exception e) {
 			logger.warn("Caching task failed "+ExceptionUtils.getStackTrace(e));
 		}
 	}
 
-	@Scheduled(cron = "0 */6 * ? * *")
+	@Scheduled(cron = "0 0 23 1 * ?")
 	public void cleanupLastSyncStatusTable() {
 		// Get the current date and time
 		notificationDataSource = NotificationDataSource.getInstance();
 		notificationDataSource.clearLastSyncStatusTable(new Timestamp(DateUtilityHelper.calculateMillisecondsRelativeToCurrentTime(30)));
-		logger.warn("Last sync cache after 5 min 😀");
 	}
 
 	public Bundle getEncountersBelowLocation(String locationId) {
