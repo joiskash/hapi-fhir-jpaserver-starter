@@ -65,12 +65,13 @@ public class AppProperties {
 	private String hapi_server_address = null;
 	private String anc_config_file = null;
 	private String pie_config_file = null;
-
+	private String aws_access_key = "";
+	private String aws_secret_key = "";
 	private String pk_file = null;
 
 	private String dashboard_public_key_file = null;
 	private String line_chart_definitions_file = null;
-   	private String tabular_config_file = null;
+	private String tabular_config_file = null;
 	private String barChart_config_file = null;
 	private String analytics_config_file = null;
 	private String country_org_id = null;
@@ -101,7 +102,7 @@ public class AppProperties {
 	private Integer search_coord_queue_capacity = 200;
 	private Boolean use_apache_address_strategy = false;
 	private Boolean use_apache_address_strategy_https = false;
-
+	private Integer facility_batch_size = 50;
 	private Integer bundle_batch_pool_size = 20;
 	private Integer bundle_batch_pool_max_size = 100;
 	private List<String> local_base_urls = new ArrayList<>();
@@ -120,12 +121,31 @@ public class AppProperties {
 
 	private List<String> envs_for_caching = null;
 
-	public void setDev_user_role(String dev_user_role){
+	public void setAws_access_key(String aws_access_key) {
+		this.aws_access_key = aws_access_key;
+	}
+
+	public String getAws_access_key() {
+		return aws_access_key;
+	}
+
+	public void setAws_secret_key(String aws_secret_key) {
+		this.aws_secret_key = aws_secret_key;
+	}
+
+	public String getAws_secret_key() {
+		return aws_secret_key;
+	}
+
+	public void setDev_user_role(String dev_user_role) {
 		this.dev_user_role = dev_user_role;
 	}
 
-	public String getDev_user_role(){ return dev_user_role;}
-	public void setApi_request_max_time(Long api_request_max_time){
+	public String getDev_user_role() {
+		return dev_user_role;
+	}
+
+	public void setApi_request_max_time(Long api_request_max_time) {
 		this.api_request_max_time = api_request_max_time;
 	}
 
@@ -141,6 +161,14 @@ public class AppProperties {
 		return envs_for_caching;
 	}
 
+	public Integer getFacility_batch_size() {
+		return facility_batch_size;
+	}
+
+	public void setFacility_batch_size(Integer facility_batch_size) {
+		this.facility_batch_size = facility_batch_size;
+	}
+
 	public void setEnvs_for_caching(List<String> envs_for_caching) {
 		this.envs_for_caching = envs_for_caching;
 	}
@@ -148,6 +176,7 @@ public class AppProperties {
 	public void setOrganization_ids_for_caching(List<String> organization_ids_for_caching) {
 		this.organization_ids_for_caching = organization_ids_for_caching;
 	}
+
 	public Integer getExecutor_core_pool_size() {
 		return executor_core_pool_size;
 	}
@@ -323,6 +352,7 @@ public class AppProperties {
 	public String getKeycloak_Password() {
 		return keycloak_password;
 	}
+
 	public String getSms_Password() {
 		return sms_password;
 	}
@@ -386,13 +416,13 @@ public class AppProperties {
 	public void setNotification_datasource_config_path(String notification_datasource_config_path) {
 		this.notification_datasource_config_path = notification_datasource_config_path;
 	}
-	
+
 	public String getGcp_credential_file_path() {
 		return this.gcp_credential_file_path;
 	}
-	
+
 	public void setGcp_credential_file_path(String gcp_credential_file_path) {
-		this.gcp_credential_file_path = gcp_credential_file_path; 
+		this.gcp_credential_file_path = gcp_credential_file_path;
 	}
 
 	public String getSql_screen_time_file_path() {
@@ -406,8 +436,7 @@ public class AppProperties {
 	public void setHapi_Server_address(String hapi_server_address) {
 		this.hapi_server_address = hapi_server_address;
 	}
-	
-	
+
 	public String getLine_chart_definitions_file() {
 		return line_chart_definitions_file;
 	}
@@ -424,25 +453,35 @@ public class AppProperties {
 	public void setAnc_config_file(String anc_config_file) {
 		this.anc_config_file = anc_config_file;
 	}
+
 	public String getBarChart_config_file() {
 		return barChart_config_file;
 	}
 
-	public String getPie_config_file(){
+	public String getPie_config_file() {
 		return pie_config_file;
 	}
-	public void setPie_config_file(String pie_config_file) { this.pie_config_file = pie_config_file; }
-	public void setPk_file(String pk_file){
+
+	public void setPie_config_file(String pie_config_file) {
+		this.pie_config_file = pie_config_file;
+	}
+
+	public void setPk_file(String pk_file) {
 		this.pk_file = pk_file;
 	}
-	public String getPk_file(){
+
+	public String getPk_file() {
 		return pk_file;
 	}
-	public String getDashboard_public_key_file(){
+
+	public String getDashboard_public_key_file() {
 		return dashboard_public_key_file;
 	}
 
-	public void setDashboard_public_key_file(String dashboard_public_key_file){ this.dashboard_public_key_file = dashboard_public_key_file; }
+	public void setDashboard_public_key_file(String dashboard_public_key_file) {
+		this.dashboard_public_key_file = dashboard_public_key_file;
+	}
+
 	public String getTabular_config_file() {
 		return tabular_config_file;
 	}
@@ -454,6 +493,7 @@ public class AppProperties {
 	public void setBarChart_config_file(String barChart_config_file) {
 		this.barChart_config_file = barChart_config_file;
 	}
+
 	public String getAnalytics_config_file() {
 		return analytics_config_file;
 	}

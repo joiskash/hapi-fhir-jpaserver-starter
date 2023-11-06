@@ -61,37 +61,11 @@ public class DashboardController {
 		allFilters.remove("lga");
 		allFilters.remove("env");
 		allFilters.remove("type");
+		allFilters.remove("counter");
 		LinkedHashMap<String, String> filters = new LinkedHashMap<>(allFilters);
 
-		LocalDateTime dateTimeNow = LocalDateTime.now();
-		String[] extractedFromDateTimeNow = dateTimeNow.toString().split(":");
-		List<String> categories = new ArrayList<>(Collections.emptyList());
-		List<String> hashcodes = new ArrayList<>(Collections.emptyList());
-		Map<String,String> categoryWithHashCodes = new HashMap<>();
-		List<ANCDailySummaryConfig> ancDailySummaryConfig = helperService.getANCDailySummaryConfigFromFile(env);
+		Map<String,String> categoryWithHashCodes = helperService.processCategories(organizationId, startDate, endDate, env, filters,true);
 
-		for (ANCDailySummaryConfig singleCategory : ancDailySummaryConfig) {
-			categories.add(singleCategory.getCategoryId());
-		}
-		String hashOfFormattedId = "";
-		for (String category : categories) {
-			hashOfFormattedId = organizationId + startDate + endDate + category + extractedFromDateTimeNow[0];
-			categoryWithHashCodes.put(category,hashOfFormattedId);
-			ArrayList<ApiAsyncTaskEntity> fetchAsyncData = datasource.fetchStatus(hashOfFormattedId);
-			if (fetchAsyncData == null || fetchAsyncData.isEmpty()) {
-				try {
-					ApiAsyncTaskEntity apiAsyncTaskEntity = new ApiAsyncTaskEntity(hashOfFormattedId, ApiAsyncTaskEntity.Status.PROCESSING.name(), null, null);
-					datasource.insert(apiAsyncTaskEntity);
-				} catch (Exception e) {
-					logger.warn(ExceptionUtils.getStackTrace(e));
-				}
-				hashcodes.add(hashOfFormattedId);
-				if(categories.indexOf(category) == (categories.size()-1)) {
-					helperService.saveQueryResult(organizationId, startDate, endDate, filters, hashcodes,env,ancDailySummaryConfig);
-					return ResponseEntity.status(202).build();
-				}
-			}
-		}
 		if (helperService.getAsyncData(categoryWithHashCodes).getBody() == "Searching in Progress") return ResponseEntity.status(202).build();
 		return ResponseEntity.ok(helperService.getAsyncData(categoryWithHashCodes));
 	}
@@ -160,6 +134,10 @@ public class DashboardController {
 	public ResponseEntity<?> categories(@RequestParam("env") String env) {
 		return helperService.getCategories(env);
 	}
+	@RequestMapping(method = RequestMethod.GET, value = "/environments")
+	public ResponseEntity<?> environments() {
+		return helperService.getEnvironmentOptions();
+	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/pieChartDefinition")
 	public ResponseEntity<?> pieChartDefinition(@RequestParam("env") String env){
@@ -181,13 +159,21 @@ public class DashboardController {
 		return helperService.getFilters(env);
 	}
 
+	@RequestMapping(method = RequestMethod.GET, value = "/organizationStructure")
+	public ResponseEntity<?> organizationStructure(
+		@RequestParam("orgId") String orgId,
+		@RequestParam("parentId") String parentId) {
+		helperService.saveOrganizationStructure(orgId, parentId);
+		return ResponseEntity.ok("Data insertion into 'organization structure' table has started");
+	}
+
 	@RequestMapping(method = RequestMethod.GET, value = "/data")
 	public ResponseEntity<?> data(
 		@RequestHeader(name = "Authorization") String token,
 		@RequestParam("env") String env,
 		@RequestParam Map<String, String> allFilters
 	) {
-		String startDate = allFilters.get("from");
+ 		String startDate = allFilters.get("from");
 		String endDate = allFilters.get("to");
 		ReportType type = ReportType.valueOf(allFilters.get("type"));
 		allFilters.remove("from");
@@ -201,7 +187,7 @@ public class DashboardController {
 		}
 		LinkedHashMap<String, String> filters = new LinkedHashMap<>();
 		filters.putAll(allFilters);
-		return helperService.getDataByPractitionerRoleId(practitionerRoleId, startDate, endDate, type,filters,env);
+		return helperService.getDataByPractitionerRoleId(practitionerRoleId, startDate, endDate, type, filters, env);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/linechart")
