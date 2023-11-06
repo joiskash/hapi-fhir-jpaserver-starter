@@ -613,7 +613,31 @@ public class HelperService {
 		}
 		return ResponseEntity.ok("Not found");
 	}
+	public SyncTimeResponse computeFacilitySyncTime(String practitionerRoleId, String env, String selectedOrganizationId) {
+		String organizationId = getOrganizationIdByPractitionerRoleId(practitionerRoleId);
+		notificationDataSource = NotificationDataSource.getInstance();
 
+		Pair<List<String>, LinkedHashMap<String, List<String>>> idsAndOrgIdToChildrenMapPair = fetchIdsAndOrgIdToChildrenMapPair(organizationId);
+
+		// Get the current date and time
+		Timestamp fiveDaysAgoTimestamp = new Timestamp(DateUtilityHelper.calculateMillisecondsRelativeToCurrentTime(5));
+
+		List<LastSyncEntity> lastSyncData = notificationDataSource.fetchLastSyncEntitiesByOrgs(idsAndOrgIdToChildrenMapPair.first, env, ApiAsyncTaskEntity.Status.COMPLETED.name(), fiveDaysAgoTimestamp);
+
+		// Group the data by organization ID and sort each group by startDateTime
+		Map<String, List<LastSyncEntity>> groupedData = lastSyncData.stream()
+			.collect(Collectors.groupingBy(LastSyncEntity::getOrgId, TreeMap::new, Collectors.toList()));
+
+		// Filter and collect the each clinic last sync times
+		String eachClinicLastSyncTimes = groupedData.values().stream()
+			.filter(entityList -> entityList.get(0).getOrgId().equals(selectedOrganizationId))
+			.map(entityList -> entityList.get(entityList.size() - 1))
+			.filter(lastEntity -> lastEntity.getEndDateTime() != null)
+			.map(lastEntity -> Utils.calculateAndFormatTimeDifference(lastEntity.getEndDateTime()))
+			.collect(Collectors.joining(", "));
+
+		return new SyncTimeResponse(eachClinicLastSyncTimes.length() > 0 ? eachClinicLastSyncTimes : "Not found");
+	}
 
 
 	public List<GroupRepresentation> getGroupsByUser(String userId) {
@@ -690,7 +714,7 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 	}
 
 	//@Scheduled(fixedDelay = 300000)
-	@Scheduled(cron = "0 0 23 * * *")
+	@Scheduled(cron = "0 */3 * ? * *")
 	public void refreshSyncForCurrentMonth() {
 		try {
 			List<String> orgIdsForCaching = appProperties.getOrganization_ids_for_caching();
@@ -701,17 +725,19 @@ public ResponseEntity<?> getAsyncData(Map<String,String> categoryWithHashCodes) 
 					cacheDashboardData(idsAndOrgIdToChildrenMapPair.first, String.valueOf(LocalDate.now().minusDays(31)), String.valueOf(LocalDate.now()), envs);
 				}
 			}
+			logger.warn("Last sync cache after 3 min 🚀");
 		}
 		catch (Exception e) {
 			logger.warn("Caching task failed "+ExceptionUtils.getStackTrace(e));
 		}
 	}
 
-	@Scheduled(cron = "0 0 23 1 * ?")
+	@Scheduled(cron = "0 */6 * ? * *")
 	public void cleanupLastSyncStatusTable() {
 		// Get the current date and time
 		notificationDataSource = NotificationDataSource.getInstance();
 		notificationDataSource.clearLastSyncStatusTable(new Timestamp(DateUtilityHelper.calculateMillisecondsRelativeToCurrentTime(30)));
+		logger.warn("Last sync cache after 5 min 😀");
 	}
 
 	public Bundle getEncountersBelowLocation(String locationId) {
@@ -2098,5 +2124,16 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 	public class MapResponse{
 		private String categoryId;
 		private ArrayList<LocationData> categoryResult;
+	}
+
+
+	public class SyncTimeResponse {
+		private final String eachClinicLastSyncTimes;
+		public SyncTimeResponse(String eachClinicLastSyncTimes) {
+			this.eachClinicLastSyncTimes = eachClinicLastSyncTimes;
+		}
+		public String getEachClinicLastSyncTimes() {
+			return eachClinicLastSyncTimes;
+		}
 	}
 }
