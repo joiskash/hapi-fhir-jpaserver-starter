@@ -330,6 +330,7 @@ public class AppProperties {
 	public void setKeycloak_Password(String keycloak_password) {
 		this.keycloak_password = keycloak_password;
 	}
+
 	public void setSms_Password(String sms_password) {
 		this.sms_password = sms_password;
 	}

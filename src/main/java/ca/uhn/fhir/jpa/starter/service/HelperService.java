@@ -2124,7 +2124,6 @@ public ResponseEntity<?> getBarChartData(String practitionerRoleId, String start
 		private ArrayList<LocationData> categoryResult;
 	}
 
-
 	public class SyncTimeResponse {
 		private final String eachClinicLastSyncTimes;
 		public SyncTimeResponse(String eachClinicLastSyncTimes) {

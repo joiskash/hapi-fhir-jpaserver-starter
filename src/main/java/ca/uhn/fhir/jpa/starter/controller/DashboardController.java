@@ -96,7 +96,6 @@ public class DashboardController {
 		return ResponseEntity.ok(helperService.getAsyncData(categoryWithHashCodes));
 	}
 
-
 	@RequestMapping(method = RequestMethod.GET, value = "/lastSyncTime")
 	public ResponseEntity<?> getLastSyncTime(
 		@RequestHeader(name = "Authorization") String token,
