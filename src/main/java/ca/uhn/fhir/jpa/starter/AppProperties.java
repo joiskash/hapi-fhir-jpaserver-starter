@@ -362,7 +362,7 @@ public class AppProperties {
 	}
 
 	public void setSms_Password(String sms_password) {
-		this.sms_password = sms_password;
+		this.sms_password = keycloak_password;
 	}
 
 	public String getFhir_user() {

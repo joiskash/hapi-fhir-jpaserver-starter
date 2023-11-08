@@ -650,12 +650,13 @@ public class HelperService {
 
 		List<LastSyncEntity> lastSyncData = notificationDataSource.fetchLastSyncEntitiesByOrgs(organizationIds, env, ApiAsyncTaskEntity.Status.COMPLETED.name(), fiveDaysAgoTimestamp);
 
-		// Sort by startDateTime
-		lastSyncData.sort(Comparator.comparing(LastSyncEntity::getStartDateTime));
-
-		LastSyncEntity lastEntity = lastSyncData.get(lastSyncData.size() - 1);
-		if (lastEntity != null && lastEntity.getEndDateTime() != null) {
-			return ResponseEntity.ok(Utils.calculateAndFormatTimeDifference(lastEntity.getEndDateTime()));
+			// Sort by startDateTime
+			lastSyncData.sort(Comparator.comparing(LastSyncEntity::getStartDateTime));
+			if(!lastSyncData.isEmpty()) {
+			LastSyncEntity lastEntity = lastSyncData.get(lastSyncData.size() - 1);
+			if (lastEntity != null && lastEntity.getEndDateTime() != null) {
+				return ResponseEntity.ok(Utils.calculateAndFormatTimeDifference(lastEntity.getEndDateTime()));
+			}
 		}
 		return ResponseEntity.ok("Not found");
 	}
