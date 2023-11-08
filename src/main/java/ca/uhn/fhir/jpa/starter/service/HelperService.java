@@ -147,7 +147,7 @@ public class HelperService {
 		mapOfOrgHierarchy.put(orgId, ReportGeneratorFactory.INSTANCE.reportGenerator().getOrganizationHierarchy(fhirClientProvider, orgId));
 	}
 
-	private GroupRepresentation getKeycloakGroupId(String groupName) {
+	private GroupRepresentation getKeycloakGroup(String groupName) {
 		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak().realm(appProperties.getKeycloak_Client_Realm());
 		try {
 			List<GroupRepresentation> groups = realmResource.groups().groups(groupName, 0, Integer.MAX_VALUE, false);
@@ -268,7 +268,7 @@ public class HelperService {
 			}
 
 			String group_id = null; // Initializing to "no-value"
-			GroupRepresentation keycloakGroup = getKeycloakGroupId(facilityUID);
+			GroupRepresentation keycloakGroup = getKeycloakGroup(facilityUID);
 			if(null != keycloakGroup) {
 				group_id = keycloakGroup.getId();
 			}
@@ -436,7 +436,7 @@ public class HelperService {
 					repeatedLevelNames.add(entry.getKey());
 				}
 			}
-
+			// Finding levels with same name
 			if (!repeatedLevelNames.isEmpty()) {
 				List<String> levelsWithSameName = new ArrayList<>();
 
@@ -457,11 +457,12 @@ public class HelperService {
 
 				List<String> keysList = new ArrayList<>(levels.keySet());
 
+				//Append the parent level to the level which has same name as parent
 				for (String level : levelsWithSameName) {
 					switch (level) {
 						case "givenState" :
 							givenState = countryName + "_" + givenState;
-							keycloakGroup = getKeycloakGroupId(givenState);
+							keycloakGroup = getKeycloakGroup(givenState);
 							if(null != keycloakGroup && keycloakGroup.getAttributes().get("type").get(0).equals("state")) {
 								state = givenState;
 							} else {
@@ -471,7 +472,7 @@ public class HelperService {
 
 						case "givenLga" :
 							givenLga = givenState + "_" + givenLga;
-							keycloakGroup = getKeycloakGroupId(givenLga);
+							keycloakGroup = getKeycloakGroup(givenLga);
 							if(null != keycloakGroup && keycloakGroup.getAttributes().get("type").get(0).equals("lga")) {
 								lga = givenLga;
 							} else {
@@ -481,7 +482,7 @@ public class HelperService {
 
 						case "givenWard" :
 							givenWard = givenLga + "_" + givenWard;
-							keycloakGroup = getKeycloakGroupId(givenWard);
+							keycloakGroup = getKeycloakGroup(givenWard);
 							if(null != keycloakGroup && keycloakGroup.getAttributes().get("type").get(0).equals("ward")) {
 								ward = givenWard;
 							} else {
