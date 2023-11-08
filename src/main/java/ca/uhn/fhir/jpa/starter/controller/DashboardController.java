@@ -86,23 +86,8 @@ public class DashboardController {
 	public Object getFacilityLastSyncTime(
 		@RequestHeader(name = "Authorization") String token,
 		@RequestParam("selectedOrganizationId") String selectedOrganizationId,
-		@RequestParam("env") String env){
-
-		String practitionerRoleId = Validation.getJWTToken(token).getPractitionerRoleId();
-		if (practitionerRoleId == null) {
-			return ResponseEntity.ok("Error : Practitioner Role Id not found in token");
-		}
-		HelperService.SyncTimeResponse syncTimeResponse = helperService.computeFacilitySyncTime(practitionerRoleId, env, selectedOrganizationId);
-		String eachClinicLastSyncTimes = syncTimeResponse.getEachClinicLastSyncTimes();
-		String formattedString1 = formatFacilitySyncTimeResponse(eachClinicLastSyncTimes);
-
-		return ResponseEntity.ok(formattedString1);
-	}
-	private String formatFacilitySyncTimeResponse(String eachClinicLastSyncTimes) {
-		StringBuilder formattedString1 = new StringBuilder("Facility synced: ");
-		formattedString1.append(eachClinicLastSyncTimes);
-
-		return formattedString1.toString();
+		@RequestParam("env") String env) {
+		return helperService.computeFacilitySyncTime(env, selectedOrganizationId);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/getTableData/{lastUpdated}")
