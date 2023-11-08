@@ -445,7 +445,6 @@ public class AppProperties {
 		this.line_chart_definitions_file = line_chart_definitions_file;
 	}
 
-	
 	public String getAnc_config_file() {
 		return anc_config_file;
 	}
