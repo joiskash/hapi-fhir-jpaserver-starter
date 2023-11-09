@@ -658,7 +658,7 @@ public class HelperService {
 				return ResponseEntity.ok(Utils.calculateAndFormatTimeDifference(lastEntity.getEndDateTime()));
 			}
 		}
-		return ResponseEntity.ok("Not found");
+		return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Not Found");
 	}
 
 

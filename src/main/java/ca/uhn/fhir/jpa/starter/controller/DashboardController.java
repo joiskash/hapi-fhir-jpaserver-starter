@@ -83,8 +83,7 @@ public class DashboardController {
 		return helperService.computeSyncTime(practitionerRoleId,env);
 	}
 	@RequestMapping(method = RequestMethod.GET, value = "/facilityLastSyncTime")
-	public Object getFacilityLastSyncTime(
-		@RequestHeader(name = "Authorization") String token,
+	public ResponseEntity<?> getFacilityLastSyncTime(
 		@RequestParam("selectedOrganizationId") String selectedOrganizationId,
 		@RequestParam("env") String env) {
 		return helperService.computeFacilitySyncTime(env, selectedOrganizationId);
