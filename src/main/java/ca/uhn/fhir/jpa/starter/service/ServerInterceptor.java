@@ -63,8 +63,8 @@ public class ServerInterceptor {
 		} else if (theResource.fhirType().equals("Encounter")) {
 			Encounter encounter = (Encounter) theResource;
 			if(encounter.getMeta().hasTag() && encounter.getMeta().getTag().get(0).getCode().equals("patient-registration")){
-				String serviceProviderId = encounter.getServiceProvider().getReference().split("/")[1];
-				String patientId = encounter.getSubject().getReference().split("/")[1];
+				String serviceProviderId = encounter.getServiceProvider().getReferenceElement().getIdPart();
+				String patientId = encounter.getSubject().getReferenceElement().getIdPart();
 				try {
 					List<PatientIdentifierEntity> getExistingRowsToUpdateOrgId = notificationDataSource.getExistingEntriesWithPatientId(patientId);
 					ArrayList<PatientIdentifierEntity> PatientIdentifierEntitiesToUpdate = new ArrayList<PatientIdentifierEntity>();
@@ -230,7 +230,7 @@ public class ServerInterceptor {
 	private void processPatientUpdate(IBaseResource theOldResource, IBaseResource theResource) {
 		Patient oldPatient = (Patient) theOldResource;
 		Patient updatedPatient = (Patient) theResource;
-		String encounterId = null;
+		String organizationId = null;
 		if (FhirUtils.isOclPatient(oldPatient.getIdentifier())
 				&& !FhirUtils.isOclPatient(updatedPatient.getIdentifier())) {
 			// If the use updates the temporary patient from the mobile, the identifier will
@@ -253,7 +253,7 @@ public class ServerInterceptor {
 		if (entries != null && !entries.isEmpty()) {
 			Encounter encounterResource = (Encounter) entries.get(0).getResource();
 			if (encounterResource != null) {
-				encounterId = encounterResource.getIdElement().getId();
+				organizationId = encounterResource.getIdElement().getId();
 			}
 		}
 
@@ -295,7 +295,7 @@ public class ServerInterceptor {
 				PatientIdentifierEntity newPatientIdentifierEntity = new PatientIdentifierEntity(patientId,
 						updatedPatientOclId.getFirst(), PatientIdentifierEntity.PatientIdentifierType.OCL_ID.name(),
 						updatedPatientOclId.getSecond(), updatedPatientOclId.getThird(),
-						PatientIdentifierStatus.OK.name(), currentTime, currentTime, encounterId);
+						PatientIdentifierStatus.OK.name(), currentTime, currentTime, organizationId);
 				notificationDataSource.persist(newPatientIdentifierEntity);
 			}
 		}
@@ -327,7 +327,7 @@ public class ServerInterceptor {
 
 				PatientIdentifierEntity newPatientIdentifierEntity = new PatientIdentifierEntity(patientId,
 						updatedPatientCardNumber, PatientIdentifierEntity.PatientIdentifierType.PATIENT_CARD_NUM.name(),
-						null, null, PatientIdentifierStatus.OK.name(), currentTime, currentTime, encounterId);
+						null, null, PatientIdentifierStatus.OK.name(), currentTime, currentTime, organizationId);
 				notificationDataSource.persist(newPatientIdentifierEntity);
 			}
 		}
