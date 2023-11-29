@@ -253,7 +253,7 @@ public class ServerInterceptor {
 		if (entries != null && !entries.isEmpty()) {
 			Encounter encounterResource = (Encounter) entries.get(0).getResource();
 			if (encounterResource != null) {
-				organizationId = encounterResource.getIdElement().getId();
+				organizationId = encounterResource.getServiceProvider().getReferenceElement().getIdPart();
 			}
 		}
 
