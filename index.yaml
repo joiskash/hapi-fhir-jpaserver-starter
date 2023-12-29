@@ -6,6 +6,37 @@ entries:
         # When using the list of objects option the valid supported kinds are
         # added, changed, deprecated, removed, fixed, and security.
         - kind: added
+          description: updated starter image to 6.8.3
+        - kind: fixed
+          description: incorrect handling of existing secret database config
+        - kind: added
+          description: support for using a non-admin user for the postgres database
+        - kind: added
+          description: ability to create a dedicated ServiceAccount
+      artifacthub.io/license: Apache-2.0
+    apiVersion: v2
+    appVersion: 6.8.3
+    created: "2023-12-29T12:36:27.32528847Z"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 12.5.6
+    description: A Helm chart for deploying the HAPI FHIR JPA server starter on Kubernetes.
+    digest: 48ea3444eacbfd6b21986ec195346576a1a02d0c1a5d71d5b4b1fdcd8e35105a
+    home: https://github.com/hapifhir/hapi-fhir-jpaserver-starter
+    name: hapi-fhir-jpaserver
+    sources:
+    - https://github.com/hapifhir/hapi-fhir-jpaserver-starter
+    type: application
+    urls:
+    - https://github.com/DigitalHealthIntegration/hapi-fhir-jpaserver-starter/releases/download/helm-v0.14.0/hapi-fhir-jpaserver-0.14.0.tgz
+    version: 0.14.0
+  - annotations:
+      artifacthub.io/changes: |
+        # When using the list of objects option the valid supported kinds are
+        # added, changed, deprecated, removed, fixed, and security.
+        - kind: added
           description: allow specifying application properties via yaml config
         - kind: added
           description: allow setting resource limits and requests for the Helm test pods
@@ -118,4 +149,4 @@ entries:
     urls:
     - https://github.com/hapifhir/hapi-fhir-jpaserver-starter/releases/download/helm-v0.6.0/hapi-fhir-jpaserver-0.6.0.tgz
     version: 0.6.0
-generated: "2023-10-16T05:23:29.721956019Z"
+generated: "2023-12-29T12:36:27.325316362Z"
