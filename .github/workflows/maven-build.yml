@@ -2,7 +2,7 @@ name: Build and Hapi Fhir Jpaserver Starter Server
 
 on:
   push:
-    branches: [ "se/unit_test3" ]
+    branches: [ "fhir-resources-helper" ]
     paths:
       - 'src/**'
       - '.github/workflows/maven-build.yml'
