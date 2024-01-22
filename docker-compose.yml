@@ -1,7 +1,8 @@
 version: "3"
 services:
   hapi-fhir-jpaserver-start:
-    build: .
+    build: 
+      dockerfile: Dockerfile
     container_name: hapi-fhir-jpaserver-start
     restart: on-failure
     ports:
@@ -16,5 +17,16 @@ services:
       POSTGRES_PASSWORD: "admin"
     volumes:
       - hapi-fhir-postgres:/var/lib/postgresql/data
+  fhir-data-loader:
+    build:
+      dockerfile: Pythondockerfile
+    depends_on:
+      hapi-fhir-jpaserver-start:
+        condition: service_started
+
+    command: sh -c "sleep 180 && python ./fhir_data_loader.py"  
+    ports:
+      - "8090:8090"
+    
 volumes:
   hapi-fhir-postgres:
