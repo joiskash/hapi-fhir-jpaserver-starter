@@ -19,6 +19,7 @@ import ca.uhn.fhir.jpa.starter.model.*;
 import com.iprd.fhir.utils.FhirUtils;
 import com.iprd.fhir.utils.PatientIdentifierStatus;
 
+import com.iprd.fhir.utils.ValidationUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.hibernate.HibernateException;
@@ -57,6 +58,9 @@ public class ServerInterceptor {
 
 	@Hook(Pointcut.STORAGE_PRESTORAGE_RESOURCE_CREATED)
 	public void insert(IBaseResource theResource) throws IOException {
+
+		ValidationUtils.validateFhirResource(theResource);
+
 		notificationDataSource = NotificationDataSource.getInstance();
 		if (theResource.fhirType().equals("Media")) {
 			processMedia((Media) theResource);
@@ -134,6 +138,9 @@ public class ServerInterceptor {
 	}
 	@Hook(Pointcut.STORAGE_PRESTORAGE_RESOURCE_UPDATED)
 	public void update(IBaseResource theOldResource, IBaseResource theResource) throws IOException {
+
+		ValidationUtils.validateFhirResource(theResource);
+
 		notificationDataSource = NotificationDataSource.getInstance();
 		if (theResource.fhirType().equals("Media")) {
 			processMedia((Media) theResource);
