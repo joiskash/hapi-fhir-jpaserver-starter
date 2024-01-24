@@ -1,8 +1,5 @@
 import glob
-import json
 import os
-import subprocess
-import time
 import requests
 
 #fhir server endpoint

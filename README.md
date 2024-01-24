@@ -7,10 +7,7 @@ This repository contains code for setting up a HAPI FHIR server and loading synt
 Make sure the following Python libraries are installed on your system before running the data loading script:
 
 - `glob`
-- `json`
 - `os`
-- `subprocess`
-- `time`
 - `requests`
 
 You can install these libraries using the following command:
