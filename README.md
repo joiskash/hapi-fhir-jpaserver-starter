@@ -23,7 +23,7 @@ Note: Make sure to replace glob2 with glob if you are using Python 3.5 and above
 
 1. Navigate to the project directory:
    ```bash
-   cd hapi-fhir-server
+   cd hapi-fhir-jpaserver-starter
  
 2. Run the HAPI FHIR server using Docker Compose:  
    ```bash
