@@ -7,6 +7,10 @@ services:
     restart: on-failure
     ports:
       - "8080:8080"
+    networks:
+      - cloudbuild
+      - default
+      
   hapi-fhir-postgres:
     image: postgres:13-alpine
     container_name: hapi-fhir-postgres
@@ -17,11 +21,22 @@ services:
       POSTGRES_PASSWORD: "admin"
     volumes:
       - hapi-fhir-postgres:/var/lib/postgresql/data
+    networks:
+      - cloudbuild
+      - default
+      
   synthea:
       build: 
         dockerfile: Syntheadockerfile       
       volumes:
       - ./output:/synthea/output   
-    
+      networks:
+        - cloudbuild
+        - default
 volumes:
   hapi-fhir-postgres:
+  
+networks:
+  cloudbuild:
+    external: true
+    name: cloudbuild # Needed for Continuous integration
