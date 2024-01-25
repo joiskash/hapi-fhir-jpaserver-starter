@@ -21,21 +21,16 @@ Note: Make sure to replace glob2 with glob if you are using Python 3.5 and above
 
 ## Setup Instructions
 
-1. Clone this repository:
-
-   ```bash
-   git clone https://github.com/suriyan3/hapi-fhir-server.git
-
-2. Navigate to the project directory:
+1. Navigate to the project directory:
    ```bash
    cd hapi-fhir-server
  
-3. Run the HAPI FHIR server using Docker Compose:  
+2. Run the HAPI FHIR server using Docker Compose:  
    ```bash
    docker-compose up
 
-4. Wait for the Synthea service to generate JSON files. The service will automatically stop after generating the files.
-5. Once the service is stopped, run the Python script to upload the generated JSON files to the FHIR server:
+3. Wait for the Synthea service to generate JSON files. The service will automatically stop after generating the files.
+4. Once the service is stopped, run the Python script to upload the generated JSON files to the FHIR server:
    ```bash
    python3 fhir_data_loader.py
 This script will handle the data loading process.
