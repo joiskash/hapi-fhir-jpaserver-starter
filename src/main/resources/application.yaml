@@ -121,7 +121,7 @@ hapi:
       keycloak_password: 123456
       aws_access_key:  
       aws_secret_key:
-      msg_password: IPRDHACEY123
+      sms_password: password
       fhir_user: kjois@iprdgroup.com
       fhir_password: 12345
       hapi_server_address: http://localhost:8085/fhir
