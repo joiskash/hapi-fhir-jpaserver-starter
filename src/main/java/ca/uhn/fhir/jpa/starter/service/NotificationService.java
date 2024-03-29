@@ -79,7 +79,7 @@ public class NotificationService {
 						sendSmsAndUpdateStatus(oclLinkMessage, mobile, record);
 					} else if (record.getResourceType().equals("Appointment")) {
 						Timestamp nextVisitDate = record.getNextVisitDate();
-						patientDetailsMessage += "Your next visit details are: \nName: " + patientName + " \nDate: " + nextVisitDate + " \nYour OCL Id is:\n" + patientOclId + "";
+						patientDetailsMessage += "Your next visit details are: \nName: " + patientName + (nextVisitDate != null ? "\nDate: " + nextVisitDate : "") + "\nYour OCL Id is:\n" + patientOclId;
 						sendSmsAndUpdateStatus(patientDetailsMessage, mobile, record);
 					}
 				}
