@@ -676,13 +676,15 @@ public class HelperService {
 									ContactPoint.ContactPointSystem.PHONE.toCode(),
 									Arrays.asList(countryCode + phoneNumber)));
 					if (practitionerId == null) {
-						map.put("Practitioner Resource creation failed for user", s);
+						map.put("Resource creation failed for user", s);
+						logger.warn("Practitioner Resource creation failed for user " + s);
 						continue;
 					}
 					practitionerRoleId = createResource(keycloakUserId, practitionerRole, PractitionerRole.class,
 							PractitionerRole.PRACTITIONER.hasId("Practitioner/" + practitionerId));
 					if (practitionerRoleId == null) {
-						map.put("PractitionerRole Resource creation failed for user", s);
+						map.put("Resource creation failed for user", s);
+						logger.warn("PractitionerRole Resource creation failed for user " + s);
 					}
 				}
 			}
