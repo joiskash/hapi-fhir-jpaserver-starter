@@ -1,13 +1,9 @@
 package ca.uhn.fhir.jpa.starter.controller;
 
-import android.util.Pair;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.context.FhirVersionEnum;
 import ca.uhn.fhir.jpa.starter.ConfigDefinitionTypes;
 import ca.uhn.fhir.jpa.starter.DashboardEnvironmentConfig;
-import ca.uhn.fhir.jpa.starter.model.ApiAsyncTaskEntity;
-import ca.uhn.fhir.jpa.starter.model.AnalyticItem;
-import ca.uhn.fhir.jpa.starter.model.ReportType;
 import ca.uhn.fhir.jpa.starter.model.OCLQrResponse;
 import ca.uhn.fhir.jpa.starter.model.OCLQrRequest;
 import ca.uhn.fhir.jpa.starter.service.NotificationDataSource;
@@ -15,12 +11,7 @@ import ca.uhn.fhir.jpa.starter.service.HelperService;
 import ca.uhn.fhir.jpa.starter.service.BigQueryService;
 import ca.uhn.fhir.jpa.starter.service.QrService;
 import ca.uhn.fhir.parser.IParser;
-import com.iprd.fhir.utils.Validation;
 import com.iprd.report.OrgItem;
-import com.iprd.report.model.definition.ANCDailySummaryConfig;
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Organization;
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,16 +28,10 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.Collections;
-import java.util.List;
-import java.util.ArrayList;
-import javax.annotation.PostConstruct;
-import java.time.LocalDateTime;
+
 
 @CrossOrigin(origins = {"http://localhost:3000/", "http://testhost.dashboard:3000/", "https://oclink.io/", "https://opencampaignlink.org/"}, maxAge = 3600, allowCredentials = "true")
 @RestController
