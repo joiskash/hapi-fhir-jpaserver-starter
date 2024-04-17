@@ -334,7 +334,6 @@ public class HelperService {
 	public ResponseEntity<LinkedHashMap<String, Object>> createGroups(MultipartFile file) throws IOException {
 
 		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
-		List<String> invalidClinics = new ArrayList<>();
 		Set<OrgHierarchy> uniqueOrgHierarchySet = new HashSet<>();
 
 		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
@@ -354,7 +353,7 @@ public class HelperService {
 
 			if (!Validation.validateClinicAndStateCsvLine(csvData)) {
 				logger.warn("CSV validation failed");
-				invalidClinics.add("Row length validation failed: " + singleLine);
+				map.put("Row length validation failed" ,singleLine);
 				continue;
 			}
 
@@ -377,8 +376,7 @@ public class HelperService {
 			String countryName = clinicData.getCountryName();
 
 			if (facilityUID.isEmpty()) {
-				invalidClinics
-						.add("Invalid facilityUID: " + facilityName + "," + stateName + "," + lgaName + "," + wardName);
+				map.put("Invalid facilityUID",facilityName + "," + stateName + "," + lgaName + "," + wardName);
 				continue;
 			}
 
@@ -396,14 +394,14 @@ public class HelperService {
 						country.getIdElement().getIdPart());
 				countryGroupId = createKeycloakGroup(countryGroupRep);
 				if (countryGroupId == null) {
-					invalidClinics.add("Group creation failed for state: " + facilityName + "," + countryName + ","
-							+ stateName + "," + lgaName + "," + wardName);
+					map.put("Group creation failed for state",facilityName + "," + countryName + ","
+						+ stateName + "," + lgaName + "," + wardName);
 					continue;
 				}
 				countryId = createResource(countryGroupId, country, Organization.class);
 				if (countryId == null) {
-					invalidClinics.add("Resource creation failed for state: " + facilityName + "," + countryName + ","
-							+ stateName + "," + lgaName + "," + wardName);
+					map.put("Resource creation failed for state",facilityName + "," + countryName + ","
+						+ stateName + "," + lgaName + "," + wardName);
 					continue;
 				}
 				uniqueOrgHierarchySet.add(new OrgHierarchy(countryId, "country", null, null, null, null));
@@ -412,14 +410,14 @@ public class HelperService {
 						state.getIdElement().getIdPart());
 				stateGroupId = createKeycloakGroup(stateGroupRep);
 				if (stateGroupId == null) {
-					invalidClinics.add("Group creation failed for state: " + facilityName + "," + stateName + ","
-							+ lgaName + "," + wardName);
+					map.put("Group creation failed for state",facilityName + "," + stateName + ","
+						+ lgaName + "," + wardName);
 					continue;
 				}
 				stateId = createResource(stateGroupId, state, Organization.class);
 				if (stateId == null) {
-					invalidClinics.add("Resource creation failed for state: " + facilityName + "," + stateName + ","
-							+ lgaName + "," + wardName);
+					map.put("Resource creation failed for state" ,facilityName + "," + stateName + ","
+						+ lgaName + "," + wardName);
 					continue;
 				}
 				uniqueOrgHierarchySet.add(new OrgHierarchy(stateId, "state", countryId, null, null, null));
@@ -428,14 +426,14 @@ public class HelperService {
 						lga.getIdElement().getIdPart());
 				lgaGroupId = createKeycloakGroup(lgaGroupRep);
 				if (lgaGroupId == null) {
-					invalidClinics.add("Group creation failed for LGA: " + facilityName + "," + stateName + ","
-							+ lgaName + "," + wardName);
+					map.put("Group creation failed for LGA" ,facilityName + "," + stateName + ","
+						+ lgaName + "," + wardName);
 					continue;
 				}
 				lgaId = createResource(lgaGroupId, lga, Organization.class);
 				if (lgaId == null) {
-					invalidClinics.add("Resource creation failed for LGA: " + facilityName + "," + stateName + ","
-							+ lgaName + "," + wardName);
+					map.put("Resource creation failed for LGA",facilityName + "," + stateName + ","
+						+ lgaName + "," + wardName);
 					continue;
 				}
 				if (!wardName.isEmpty()) {
@@ -444,14 +442,14 @@ public class HelperService {
 							ward.getIdElement().getIdPart());
 					wardGroupId = createKeycloakGroup(wardGroupRep);
 					if (wardGroupId == null) {
-						invalidClinics.add("Group creation failed for Ward: " + facilityName + "," + stateName + ","
-								+ lgaName + "," + wardName);
+						map.put("Group creation failed for Ward" ,facilityName + "," + stateName + ","
+							+ lgaName + "," + wardName);
 						continue;
 					}
 					wardId = createResource(wardGroupId, ward, Organization.class);
 					if (wardId == null) {
-						invalidClinics.add("Resource creation failed for Ward: " + facilityName + "," + stateName + ","
-								+ lgaName + "," + wardName);
+						map.put("Resource creation failed for Ward", facilityName + "," + stateName + ","
+							+ lgaName + "," + wardName);
 						continue;
 					}
 
@@ -471,15 +469,15 @@ public class HelperService {
 						argusoftIdentifier);
 				facilityGroupId = createKeycloakGroup(facilityGroupRep);
 				if (facilityGroupId == null) {
-					invalidClinics.add("Group creation failed for facility: " + facilityName + "," + stateName + ","
-							+ lgaName + "," + wardName);
+					map.put("Group creation failed for facility", facilityName + "," + stateName + ","
+						+ lgaName + "," + wardName);
 					continue;
 				}
 				facilityOrganizationId = createResource(facilityGroupId, clinicOrganization, Organization.class);
 				facilityLocationId = createResource(facilityGroupId, clinicLocation, Location.class);
 				if (facilityOrganizationId == null || facilityLocationId == null) {
-					invalidClinics.add("Resource creation failed for Facility: " + facilityName + "," + stateName + ","
-							+ lgaName + "," + wardName);
+					map.put("Resource creation failed for Facility" ,facilityName + "," + stateName + ","
+						+ lgaName + "," + wardName);
 				}
 			}
 		}
@@ -497,11 +495,11 @@ public class HelperService {
 			}
 		}
 
-		map.put("count", iteration);
-		if (invalidClinics.size() > 0) {
-			map.put("issues", invalidClinics);
+		if (map.size() > 0) {
+			map.put("uploadTaskStatus", "Failure");
+		} else {
+			map.put("uploadTaskStatus", "Success");
 		}
-		map.put("uploadTaskStatus", "Completed");
 		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
 	}
 
@@ -509,7 +507,6 @@ public class HelperService {
 			throws Exception {
 		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
 		List<String> practitioners = new ArrayList<>();
-		List<String> invalidUsers = new ArrayList<>();
 		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
 		String singleLine;
 		int iteration = 0;
@@ -679,18 +676,24 @@ public class HelperService {
 									ContactPoint.ContactPointSystem.PHONE.toCode(),
 									Arrays.asList(countryCode + phoneNumber)));
 					if (practitionerId == null) {
-						invalidUsers.add("Resource creation failed for user: " + s);
+						map.put("Resource creation failed for user", s);
+						logger.warn("Practitioner Resource creation failed for user " + s);
 						continue;
 					}
 					practitionerRoleId = createResource(keycloakUserId, practitionerRole, PractitionerRole.class,
 							PractitionerRole.PRACTITIONER.hasId("Practitioner/" + practitionerId));
 					if (practitionerRoleId == null) {
-						invalidUsers.add("Resource creation failed for user: " + s);
+						map.put("Resource creation failed for user", s);
+						logger.warn("PractitionerRole Resource creation failed for user " + s);
 					}
 				}
 			}
 		}
-		map.put("UploadTaskStatus", "Completed");
+		if (map.size() == 0) {
+			map.put("UploadTaskStatus", "Success");
+		} else {
+			map.put("UploadTaskStatus", "Failure");
+		}
 		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
 	}
 
@@ -698,7 +701,6 @@ public class HelperService {
 			throws Exception {
 		LinkedHashMap<String, Object> map = new LinkedHashMap<>();
 		List<String> practitioners = new ArrayList<>();
-		List<String> invalidUsers = new ArrayList<>();
 		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(file.getInputStream(), "UTF-8"));
 		String singleLine;
 		int iteration = 0;
@@ -715,7 +717,7 @@ public class HelperService {
 			String hcwData[] = singleLine.split(",");
 
 			if (!Validation.validationDashboardUserCsvLine(hcwData)) {
-				invalidUsers.add("CSV length validation failed: " + hcwData[0] + " " + hcwData[1]);
+				map.put("CSV length validation failed",hcwData[0] + " " + hcwData[1]);
 				continue;
 			}
 
@@ -743,14 +745,13 @@ public class HelperService {
 
 			organizationId = getOrganizationIdByOrganizationNameAndType(organizationName, type);
 			if (organizationId == null) {
-				invalidUsers.add("Organization not found: " + firstName + " " + lastName + "," + organizationName);
+				map.put("Organization not found ", organizationName);
 				continue;
 			}
 
 			if (practitioners.contains(firstName) && practitioners.contains(lastName)
 					&& practitioners.contains(email)) {
-				invalidUsers.add(
-						"Practitioner already exists: " + firstName + "," + lastName + "," + userName + "," + email);
+				map.put("Practitioner already exists" ,firstName + "," + lastName + "," + userName + "," + email);
 				continue;
 			}
 			Practitioner practitioner = FhirResourceTemplateHelper.user(firstName, lastName, phoneNumber, countryCode,
@@ -767,7 +768,7 @@ public class HelperService {
 					type.toLowerCase());
 			String keycloakUserId = createKeycloakUser(user);
 			if (keycloakUserId == null) {
-				invalidUsers.add("Failed to create user: " + firstName + " " + lastName + "," + userName + "," + email);
+				map.put("Failed to create user",firstName + " " + lastName + "," + userName + "," + email);
 				continue;
 			}
 			RoleRepresentation KeycloakRoleRepresentation = KeycloakTemplateHelper.role(role);
@@ -779,8 +780,8 @@ public class HelperService {
 					Practitioner.TELECOM.exactly().systemAndValues(ContactPoint.ContactPointSystem.PHONE.toCode(),
 							Arrays.asList(countryCode + phoneNumber)));
 			if (practitionerId == null) {
-				invalidUsers.add("Failed to create resource for user: " + firstName + " " + lastName + "," + userName
-						+ "," + email);
+				map.put("Failed to create resource for user" ,firstName + " " + lastName + "," + userName
+					+ "," + email);
 				continue;
 			}
 			if (!practitionerId.equals(practitioner.getIdElement().getIdPart())) {
@@ -792,14 +793,15 @@ public class HelperService {
 			practitionerRoleId = createResource(keycloakUserId, practitionerRole, PractitionerRole.class,
 					PractitionerRole.PRACTITIONER.hasId("Practitioner/" + practitionerId));
 			if (practitionerRoleId == null) {
-				invalidUsers.add("Failed to create resource for user: " + firstName + " " + lastName + "," + userName
-						+ "," + email);
+				map.put("Failed to create resource for user" ,firstName + " " + lastName + "," + userName
+					+ "," + email);
 			}
 		}
-		if (invalidUsers.size() > 0) {
-			map.put("issues", invalidUsers);
+		if (map.size() > 0) {
+			map.put("UploadTaskStatus", "Failure");
+		} else {
+			map.put("UploadTaskStatus", "Success");
 		}
-		map.put("taskStatus", "Completed");
 		return new ResponseEntity<LinkedHashMap<String, Object>>(map, HttpStatus.OK);
 	}
 
@@ -2460,7 +2462,7 @@ public class HelperService {
 				.realm(appProperties.getKeycloak_Client_Realm());
 		List<GroupRepresentation> groups = realmResource.groups().groups(groupRep.getName(), 0, Integer.MAX_VALUE,
 				false);
-//
+
 		for (GroupRepresentation group : groups) {
 			if (group.getName().equals(groupRep.getName()) && (groupRep.getAttributes().get("parent") == null
 					|| group.getAttributes().containsValue(groupRep.getAttributes().get("parent")))) {
