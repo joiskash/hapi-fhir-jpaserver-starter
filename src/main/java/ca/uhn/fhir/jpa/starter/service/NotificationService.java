@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import okhttp3.Request;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.ResourceType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -115,7 +116,7 @@ public class NotificationService {
 			smsInfoRecord.setPatientCardNumber(patientCardNumber);
 			if (Objects.equals(comGenerator.getCommunicationStatus(), MessageStatus.SENT.name()))
 				smsInfoRecord.setSentAt(comGenerator.getUpdatedAt());
-			if (comGenerator.getResourceType().equals("Appointment")){
+			if (comGenerator.getResourceType().equals(ResourceType.Appointment.name())){
 				smsInfoRecord.setEncounterId(encIdAndOrgIdPair.getFirst());
 				smsInfoRecord.setOrganizationId(encIdAndOrgIdPair.getSecond());
 			}
