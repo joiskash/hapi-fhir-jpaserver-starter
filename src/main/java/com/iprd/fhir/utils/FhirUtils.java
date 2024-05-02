@@ -9,14 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import org.hl7.fhir.r4.model.Identifier;
-import org.hl7.fhir.r4.model.Bundle;
-import org.hl7.fhir.r4.model.Appointment;
-import org.hl7.fhir.r4.model.Reference;
-import org.hl7.fhir.r4.model.QuestionnaireResponse;
-import org.hl7.fhir.r4.model.Encounter;
-import org.hl7.fhir.r4.model.Patient;
-import org.hl7.fhir.r4.model.PractitionerRole;
+import org.hl7.fhir.r4.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import autovalue.shaded.kotlin.Pair;
@@ -53,12 +46,12 @@ public class FhirUtils {
 	}
 
 	public static Pair<String, String> getEncounterIdAndOrganizationIdForAppointment(String appointmentId, IGenericClient fhirClient){
-		Bundle appointmentBundle = fhirClient.search().forResource(Appointment.class).where(Appointment.RES_ID.exactly().identifier(appointmentId)).returnBundle(Bundle.class).execute();
-		if (!appointmentBundle.hasEntry()){
+		Bundle provenanceBundle = fhirClient.search().forResource(Provenance.class).where(Provenance.TARGET.hasId(appointmentId)).returnBundle(Bundle.class).execute();
+		if (!provenanceBundle.hasEntry()){
 			return null;
 		}
-		Appointment appointment = (Appointment) appointmentBundle.getEntry().get(0).getResource();
-		String questionnaireResponseId = ((Reference) appointment.getExtensionByUrl("http://iprdgroup.com/fhir/StructureDefinition/resource-questionnaireResponse").getValue()).getReferenceElement().getIdPart();
+		Provenance provenance = (Provenance) provenanceBundle.getEntry().get(0).getResource();
+		String questionnaireResponseId = provenance.getEntityFirstRep().getWhat().getReferenceElement().getIdPart();
 		Bundle questionnaireResponseBundle = fhirClient.search().forResource(QuestionnaireResponse.class).where(QuestionnaireResponse.RES_ID.exactly().identifier(questionnaireResponseId)).returnBundle(Bundle.class).execute();
 		if (!questionnaireResponseBundle.hasEntry()){
 			return null;
