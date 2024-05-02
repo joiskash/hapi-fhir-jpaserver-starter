@@ -35,7 +35,7 @@ public class NotificationService {
 	FhirClientAuthenticatorService fhirClientAuthenticatorService;
 	@Autowired
 	AppProperties appProperties;
-	private static final long DELAY = 1000;
+	private static final long DELAY = 3 * 60000;
 	private static final long DELETE_WORK_DELAY = 24 * 3600000;
 
 	private static final Logger logger = LoggerFactory.getLogger(NotificationService.class);
@@ -131,21 +131,21 @@ public class NotificationService {
 		// TODO: Can query parameters be assigned dynamically through app properties instead of hardcoding?
 		String smsPassword = appProperties.getSms_password();
 		String smsUrl = "https://portal.nigeriabulksms.com/api/?username=impacthealth@hacey.org" + "&password=" + smsPassword + "&message=" + message + "&sender=HACEY-IPRD&mobiles=" + mobileNumber;
-//		Request smsRequest = new Request.Builder().url(smsUrl).build();
-//		okhttp3.Response smsResponse = client.newCall(smsRequest).execute();
+		Request smsRequest = new Request.Builder().url(smsUrl).build();
+		okhttp3.Response smsResponse = client.newCall(smsRequest).execute();
 		try {
-//			String smsStatus = getSMSResponseStatus(smsResponse);
-//			if (smsStatus != null && smsStatus.equals("OK")){
+			String smsStatus = getSMSResponseStatus(smsResponse);
+			if (smsStatus != null && smsStatus.equals("OK")){
 				System.out.println(message);
 				comGeneratorEntity.setCommunicationStatus(MessageStatus.SENT.name());
 				dataSource.update(comGeneratorEntity);
-//			}
+			}
 		} catch (Exception e) {
 			comGeneratorEntity.setCommunicationStatus(MessageStatus.FAILED.name());
 			dataSource.update(comGeneratorEntity);
 			logger.warn(ExceptionUtils.getStackTrace(e));
 		} finally {
-//			if (smsResponse.body() != null) smsResponse.body().close();
+			if (smsResponse.body() != null) smsResponse.body().close();
 		}
 	}
 
