@@ -78,12 +78,12 @@ public class NotificationService {
 						String oclLinkMessage = "The QR image for OCL code:\n" + patientOclId + "\nis here:\n" + patientOclLink + "";
 						sendSmsAndUpdateStatus(patientDetailsMessage, mobile, record);
 						sendSmsAndUpdateStatus(oclLinkMessage, mobile, record);
-						updateEncounterSMSInfoRecord(record);
+						updateSMSInfoRecord(record);
 					} else if (record.getResourceType().equals("Appointment")) {
 						Timestamp nextVisitDate = record.getNextVisitDate();
 						patientDetailsMessage += "Your next visit details are: \nName: " + patientName + (nextVisitDate != null ? "\nDate: " + nextVisitDate : "") + "\nYour OCL Id is:\n" + patientOclId;
 						sendSmsAndUpdateStatus(patientDetailsMessage, mobile, record);
-						updateAppointmentSMSInfoRecord(record);
+						updateSMSInfoRecord(record);
 					}
 				}
 			} catch (ResourceNotFoundException | IllegalStateException | ResourceGoneException ex) {
@@ -101,7 +101,7 @@ public class NotificationService {
 		datasource.deleteRecordsByTimePeriod(previousDate);
 	}
 
-	private void updateAppointmentSMSInfoRecord(ComGenerator comGenerator){
+	private void updateSMSInfoRecord(ComGenerator comGenerator){
 		IGenericClient fhirClient = FhirClientAuthenticatorService.getFhirClient();
 		String resourceId = comGenerator.getResourceId();
 		String patientId = comGenerator.getPatientId();
@@ -113,27 +113,12 @@ public class NotificationService {
 			SMSInfo smsInfoRecord = smsInfo.get(0);
 			smsInfoRecord.setStatus(comGenerator.getCommunicationStatus());
 			smsInfoRecord.setPatientCardNumber(patientCardNumber);
-			smsInfoRecord.setEncounterId(encIdAndOrgIdPair.getFirst());
-			smsInfoRecord.setOrganizationId(encIdAndOrgIdPair.getSecond());
 			if (Objects.equals(comGenerator.getCommunicationStatus(), MessageStatus.SENT.name()))
 				smsInfoRecord.setSentAt(comGenerator.getUpdatedAt());
-			dataSource.update(smsInfoRecord);
-		}
-	}
-
-	private void updateEncounterSMSInfoRecord(ComGenerator comGenerator){
-		IGenericClient fhirClient = FhirClientAuthenticatorService.getFhirClient();
-		String resourceId = comGenerator.getResourceId();
-		String patientId = comGenerator.getPatientId();
-		String patientCardNumber = FhirUtils.getPatientCardNumberByPatientId(patientId, fhirClient);
-		NotificationDataSource dataSource = NotificationDataSource.getInstance();
-		List<SMSInfo> smsInfo = dataSource.fetchSMSRecordsByResourceId(resourceId);
-		if (!smsInfo.isEmpty()){
-			SMSInfo smsInfoRecord = smsInfo.get(0);
-			smsInfoRecord.setStatus(comGenerator.getCommunicationStatus());
-			smsInfoRecord.setPatientCardNumber(patientCardNumber);
-			if (Objects.equals(comGenerator.getCommunicationStatus(), MessageStatus.SENT.name()))
-				smsInfoRecord.setSentAt(comGenerator.getUpdatedAt());
+			if (comGenerator.getResourceType().equals("Appointment")){
+				smsInfoRecord.setEncounterId(encIdAndOrgIdPair.getFirst());
+				smsInfoRecord.setOrganizationId(encIdAndOrgIdPair.getSecond());
+			}
 			dataSource.update(smsInfoRecord);
 		}
 	}

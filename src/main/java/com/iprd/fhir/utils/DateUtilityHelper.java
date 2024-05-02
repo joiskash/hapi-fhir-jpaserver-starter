@@ -190,7 +190,6 @@ public class DateUtilityHelper {
 	}
 
 	public static Timestamp getCurrentTimestamp(){
-		long currentTimestampInMillis = System.currentTimeMillis();
-		return new Timestamp(currentTimestampInMillis);
+		return new Timestamp(System.currentTimeMillis());
 	}
 }

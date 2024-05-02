@@ -34,6 +34,7 @@ import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Attachment;
+import org.hl7.fhir.r4.model.ResourceType;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -125,7 +126,7 @@ public class ServerInterceptor {
 		String encounterId = encounter.getIdElement().getIdPart();
 		String organizationId = FhirUtils.getOrganizationIdFromEncounter(encounter);
 		String serviceType = "Patient Registration";
-		String resourceType = "Encounter";
+		String resourceType = ResourceType.Encounter.name();
 		SMSInfo smsInfo = new SMSInfo(
 			status,
 			createdAt,
@@ -146,8 +147,8 @@ public class ServerInterceptor {
 		Timestamp createdAt = DateUtilityHelper.getCurrentTimestamp();
 		String appointmentId = appointment.getIdElement().getIdPart();
 		String patientId = appointment.getParticipantFirstRep().getActor().getReferenceElement().getIdPart();
-		String serviceType = "Appointment";
-		String resourceType = "Appointment";
+		String serviceType = ResourceType.Appointment.name();
+		String resourceType = ResourceType.Appointment.name();
 		String status = ComGenerator.MessageStatus.PENDING.name();
 		SMSInfo smsInfo = new SMSInfo(
 			status,
