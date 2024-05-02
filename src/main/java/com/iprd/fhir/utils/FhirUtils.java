@@ -9,7 +9,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
-import org.hl7.fhir.r4.model.*;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import org.hl7.fhir.r4.model.Identifier;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Provenance;
+import org.hl7.fhir.r4.model.QuestionnaireResponse;
+import org.hl7.fhir.r4.model.Encounter;
+import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.PractitionerRole;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import autovalue.shaded.kotlin.Pair;
@@ -46,23 +53,27 @@ public class FhirUtils {
 	}
 
 	public static Pair<String, String> getEncounterIdAndOrganizationIdForAppointment(String appointmentId, IGenericClient fhirClient){
+		QuestionnaireResponse questionnaireResponse;
+		Encounter encounter;
 		Bundle provenanceBundle = fhirClient.search().forResource(Provenance.class).where(Provenance.TARGET.hasId(appointmentId)).returnBundle(Bundle.class).execute();
 		if (!provenanceBundle.hasEntry()){
 			return null;
 		}
 		Provenance provenance = (Provenance) provenanceBundle.getEntry().get(0).getResource();
 		String questionnaireResponseId = provenance.getEntityFirstRep().getWhat().getReferenceElement().getIdPart();
-		Bundle questionnaireResponseBundle = fhirClient.search().forResource(QuestionnaireResponse.class).where(QuestionnaireResponse.RES_ID.exactly().identifier(questionnaireResponseId)).returnBundle(Bundle.class).execute();
-		if (!questionnaireResponseBundle.hasEntry()){
+		try{
+			questionnaireResponse = fhirClient.read().resource(QuestionnaireResponse.class).withId(questionnaireResponseId).execute();
+		} catch (ResourceNotFoundException resourceNotFoundException){
+			resourceNotFoundException.printStackTrace();
 			return null;
 		}
-		QuestionnaireResponse questionnaireResponse = (QuestionnaireResponse) questionnaireResponseBundle.getEntry().get(0).getResource();
 		String encounterId = questionnaireResponse.getEncounter().getReferenceElement().getIdPart();
-		Bundle encounterBundle = fhirClient.search().forResource(Encounter.class).where(Encounter.RES_ID.exactly().identifier(encounterId)).returnBundle(Bundle.class).execute();
-		if (!encounterBundle.hasEntry()){
+		try{
+			encounter = fhirClient.read().resource(Encounter.class).withId(encounterId).execute();
+		} catch (ResourceNotFoundException resourceNotFoundException){
+			resourceNotFoundException.printStackTrace();
 			return null;
 		}
-		Encounter encounter = (Encounter) encounterBundle.getEntry().get(0).getResource();
 		String organizationId = encounter.getServiceProvider().getReferenceElement().getIdPart();
 		return new Pair<>(encounterId, organizationId);
 	}
