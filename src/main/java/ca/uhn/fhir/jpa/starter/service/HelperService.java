@@ -192,7 +192,7 @@ public class HelperService {
 	private static String IDENTIFIER_SYSTEM = "http://www.iprdgroup.com/Identifier/System";
 	private static String SMS_EXTENTION_URL = "http://iprdgroup.com/Extentions/sms-sent";
 	public static final String TRANSFORM_SERVER_WITH_ZERO = "getCacheValueAverageWithZeroByDateRangeIndicatorAndMultipleOrgIdForScorecard";
-	public static final String TRANSFORM_SERVER_WITHOUT_ZERO = "getCacheValueAverageWithoutZeroByDateRangeIndicatorAndMultipleOrgIdScorecard";
+	public static final String TRANSFORM_SERVER_WITHOUT_ZERO = "getCacheValueAverageWithoutZeroByDateRangeIndicatorAndMultipleOrgIdForScorecard";
 	NotificationDataSource notificationDataSource;
 	LinkedHashMap<String, Pair<List<String>, LinkedHashMap<String, List<String>>>> mapOfIdsAndOrgIdToChildrenMapPair;
 	LinkedHashMap<String, List<OrgItem>> mapOfOrgHierarchy;
