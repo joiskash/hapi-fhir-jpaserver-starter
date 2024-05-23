@@ -1921,13 +1921,12 @@ public class HelperService {
 								String keyBuilder = new StringBuilder().append(indicator.getFhirPath().getExpression())
 									.append(String.join(",", fhirSearchList)).toString();
 								String hashedId = Utils.md5Bytes(keyBuilder.getBytes(StandardCharsets.UTF_8));
-								Double value;
+								Double value = 0.0;
 								if (TRANSFORM_SERVER_WITH_ZERO.equals(transformServer)) {
 									value = calculateAverage(facility, fromTable, hashedId);
-								} else if (TRANSFORM_SERVER_WITHOUT_ZERO.equals(transformServer)) {
+								}
+								if (TRANSFORM_SERVER_WITHOUT_ZERO.equals(transformServer)) {
 									value = calculateAverage(facility, orgIndicatorAverageResultWithoutZero, hashedId);
-								} else {
-									value = 0.0;
 								}
 								scoreCardItems.add(new ScoreCardItem(orgHierarchyItem.getOrgId(), indicator.getId(),
 									value.toString(), startDate, endDate));
