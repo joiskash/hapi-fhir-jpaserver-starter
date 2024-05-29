@@ -533,7 +533,7 @@ public class NotificationDataSource {
 				.createQuery(
 					"SELECT new OrgIndicatorAverageResult(orgId, indicator, ROUND(AVG(value), 2) AS averageValue) " +
 						"FROM CacheEntity " +
-						"WHERE (value <> 0 OR value = -1) " +
+						"WHERE (value <> 0 AND value <> -1) " +
 						"AND orgId IN :param1 " +
 						"AND indicator IN :param2 " +
 						"AND date >= :param3 " +
@@ -581,7 +581,7 @@ public class NotificationDataSource {
 		Session session = sf.openSession();
 		Query query = session.createQuery(
 			"SELECT AVG(value) FROM CacheEntity " +
-				"WHERE (value <> 0 OR value = -1) " +
+				"WHERE (value <> 0 AND value <> -1) " +
 				"AND date BETWEEN :param1 AND :param2 " +
 				"AND indicator = :param3 " +
 				"AND org_id IN (:param4)");
