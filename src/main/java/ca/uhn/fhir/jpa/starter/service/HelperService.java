@@ -5,6 +5,8 @@ import ca.uhn.fhir.jpa.starter.AppProperties;
 import ca.uhn.fhir.jpa.starter.AsyncConfiguration;
 import ca.uhn.fhir.jpa.starter.DashboardConfigContainer;
 import ca.uhn.fhir.jpa.starter.DashboardEnvironmentConfig;
+import ca.uhn.fhir.jpa.starter.anonymization.AnonymizerContext;
+import ca.uhn.fhir.jpa.starter.anonymization.ISANONYMIZED;
 import ca.uhn.fhir.jpa.starter.model.AnalyticComparison;
 import ca.uhn.fhir.jpa.starter.model.AnalyticItem;
 import ca.uhn.fhir.jpa.starter.model.ApiAsyncTaskEntity;
@@ -167,6 +169,7 @@ import static org.keycloak.util.JsonSerialization.mapper;
 public class HelperService {
 
 	NotificationDataSource datasource = NotificationDataSource.getInstance();
+	AnonymizerContext anonymizerContext = new AnonymizerContext();
 	@Autowired
 	AppProperties appProperties;
 	@Autowired
@@ -916,7 +919,7 @@ public class HelperService {
 			asyncRecord.setDailyResult(ClobProxy.generateProxy(dailyResultJsonString));
 			asyncRecord.setSummaryResult(ClobProxy.generateProxy(base64SummaryResult));
 			asyncRecord.setLastUpdated(Date.valueOf(LocalDate.now()));
-			asyncRecord.setAnonymousEntry("no");
+			asyncRecord.setAnonymousEntry(ISANONYMIZED.NO.name());
 			notificationDataSource.update(asyncRecord);
 		} catch (Exception e) {
 			logger.warn(ExceptionUtils.getStackTrace(e));
@@ -958,7 +961,7 @@ public class HelperService {
 
 			if (fetchAsyncData == null || fetchAsyncData.isEmpty()) {
 				try {
-					ApiAsyncTaskEntity apiAsyncTaskEntity = new ApiAsyncTaskEntity(hashOfFormattedId, ApiAsyncTaskEntity.Status.PROCESSING.name(), null, null, Date.valueOf(LocalDate.now()),"no");
+					ApiAsyncTaskEntity apiAsyncTaskEntity = new ApiAsyncTaskEntity(hashOfFormattedId, ApiAsyncTaskEntity.Status.PROCESSING.name(), null, null, Date.valueOf(LocalDate.now()),ISANONYMIZED.NO.name());
 					datasource.insert(apiAsyncTaskEntity);
 					// Add the hash code upon successful insertion
 					hashCodesToBeProcessed.add(hashOfFormattedId);
@@ -1421,8 +1424,7 @@ public class HelperService {
 				Double cacheValueSum = getCacheValueForDateRangeIndicatorAndMultipleOrgIdByReflection(
 					pieChartItem.getFhirPath().getTransformServer(), start, end,
 					Utils.md5Bytes(key.getBytes(StandardCharsets.UTF_8)), facilityIds);
-				if (isAnonymizationEnabled)
-					cacheValueSum = Utils.anonymizedData(cacheValueSum, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+				cacheValueSum= anonymizerContext.anonymize(isAnonymizationEnabled, cacheValueSum, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 				pieChartItems.add(new PieChartItem(pieChartItem.getId(), organizationId, pieChartItem.getHeader(),
 					pieChartItem.getName(), String.valueOf(cacheValueSum), pieChartItem.getChartId(),
 					pieChartItem.getColorHex()));
@@ -1613,8 +1615,7 @@ public class HelperService {
 						logger.warn(ExceptionUtils.getStackTrace(e));
 					}
 				}
-				if (isAnonymizationEnabled)
-					cacheValue = Utils.anonymizedData(cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+				cacheValue= anonymizerContext.anonymize(isAnonymizationEnabled, cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 				scoreCardItems
 					.add(new ScoreCardItem(orgId, indicator.getId(), cacheValue.toString(), startDate, endDate));
 			}
@@ -1962,8 +1963,7 @@ public class HelperService {
 								if (TRANSFORM_SERVER_WITHOUT_ZERO.equals(transformServer)) {
 									value = calculateAverage(facility, orgIndicatorAverageResultWithoutZero, hashedId);
 								}
-								if (isAnonymizationEnabled)
-									value = Utils.anonymizedData(value, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+								value= anonymizerContext.anonymize(isAnonymizationEnabled, value, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 								scoreCardItems.add(new ScoreCardItem(orgHierarchyItem.getOrgId(), indicator.getId(),
 									value.toString(), startDate, endDate));
 							}
@@ -2020,8 +2020,7 @@ public class HelperService {
 						barChartItem.getChartId(), barChart.getCategoryId());
 					Double cacheValueSum = getCacheValueForDateRangeIndicatorAndMultipleOrgIdByReflection(
 						barComponent.getFhirPath().getTransformServer(), start, end, md5, facilityIds);
-					if (isAnonymizationEnabled)
-						cacheValueSum = Utils.anonymizedData(cacheValueSum, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+					cacheValueSum= anonymizerContext.anonymize(isAnonymizationEnabled, cacheValueSum, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 					barComponents.add(new BarComponentData(barComponent.getId(), barComponent.getBarChartItemId(),
 						cacheValueSum.toString()));
 				}
@@ -2192,8 +2191,7 @@ public class HelperService {
 						weekDayPair.second, Utils.getMd5KeyForLineCacheMd5WithCategory(key,
 							lineChartDefinition.getId(), lineChart.getId(), lineChart.getCategoryId()),
 						facilityIds);
-					if (isAnonymizationEnabled)
-						cacheValue = Utils.anonymizedData(cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+					cacheValue= anonymizerContext.anonymize(isAnonymizationEnabled, cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 					lineChartItems.add(new LineChartItem(lineChartDefinition.getId(), String.valueOf(cacheValue),
 						weekDayPair.first.toString(), weekDayPair.second.toString()));
 				}
@@ -2984,8 +2982,7 @@ public class HelperService {
 							logger.warn(ExceptionUtils.getStackTrace(e));
 						}
 					}
-					if (isAnonymizationEnabled)
-						cacheValue = Utils.anonymizedData(cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+					cacheValue= anonymizerContext.anonymize(isAnonymizationEnabled, cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 					scoreCardItems
 						.add(new ScoreCardItem(orgId, indicator.getId(), cacheValue.toString(), weekDayPair.first.toString(), weekDayPair.second.toString()));
 				}
@@ -3011,25 +3008,17 @@ public class HelperService {
 					LocationData lastAddLocationData = locationDataList.get(locationDataList.size() - 1);
 					if (lastAddLocationData.getLat().equals(entry.getLat())
 						&& lastAddLocationData.getLng().equals(entry.getLng())) {
-						if (isAnonymizationEnabled){
-							double actualWeight = lastAddLocationData.weight + entry.getWeight();
-							double anonymizedWeight = Utils.anonymizedData(actualWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
-							lastAddLocationData.setWeight((int) anonymizedWeight);
-						} else{
-							lastAddLocationData.setWeight(lastAddLocationData.getWeight() + entry.getWeight());
-						}
+						double actualWeight = lastAddLocationData.weight + entry.getWeight();
+						actualWeight = anonymizerContext.anonymize(isAnonymizationEnabled, actualWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+						lastAddLocationData.setWeight((int) actualWeight);
 						locationDataList.set(locationDataList.size() - 1, lastAddLocationData);
 					} else {
 						LocationData newLocationData = new LocationData();
 						newLocationData.setLat(entry.getLat());
 						newLocationData.setLng(entry.getLng());
-						if (isAnonymizationEnabled){
-							double entryWeight = entry.getWeight();
-							double anonymizedWeight = Utils.anonymizedData(entryWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
-							newLocationData.setWeight((int) anonymizedWeight);
-						} else{
-							newLocationData.setWeight(entry.getWeight());
-						}
+						double entryWeight = entry.getWeight();
+						entryWeight = anonymizerContext.anonymize(isAnonymizationEnabled, entryWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+						newLocationData.setWeight((int)entryWeight);
 						locationDataList.add(newLocationData);
 					}
 					categoryWiseResponse.put(categoryId, locationDataList);
@@ -3037,13 +3026,9 @@ public class HelperService {
 					LocationData newLocationData = new LocationData();
 					newLocationData.setLat(entry.getLat());
 					newLocationData.setLng(entry.getLng());
-					if (isAnonymizationEnabled){
-						double entryWeight = entry.getWeight();
-						double anonymizedWeight = Utils.anonymizedData(entryWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
-						newLocationData.setWeight((int) anonymizedWeight);
-					} else{
-						newLocationData.setWeight(entry.getWeight());
-					}
+					double entryWeight = entry.getWeight();
+					entryWeight = anonymizerContext.anonymize(isAnonymizationEnabled, entryWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+					newLocationData.setWeight((int)entryWeight);
 					ArrayList<LocationData> locationDataList = new ArrayList<>();
 					locationDataList.add(newLocationData);
 					categoryWiseResponse.put(categoryId, locationDataList);

@@ -5,6 +5,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.jpa.starter.AppProperties;
 import ca.uhn.fhir.jpa.starter.AsyncConfiguration;
 import ca.uhn.fhir.jpa.starter.DashboardConfigContainer;
+import ca.uhn.fhir.jpa.starter.anonymization.ISANONYMIZED;
 import ca.uhn.fhir.jpa.starter.model.ApiAsyncTaskEntity;
 import ca.uhn.fhir.jpa.starter.model.CategoryItem;
 import ca.uhn.fhir.jpa.starter.model.PatientIdentifierEntity;
@@ -558,7 +559,7 @@ class HelperServiceTest {
 			createClob(""),
 			createClob(emptyList.toString()),
 			Date.valueOf(LocalDate.now()),
-			"no"
+			ISANONYMIZED.NO.name()
 		);
 		String dailyResultJsonString = new Gson().toJson(dailyResult);
 		ArrayList<ApiAsyncTaskEntity> apiAsyncTaskEntityList = new ArrayList<>();
@@ -944,14 +945,14 @@ class HelperServiceTest {
 		AppProperties appPropertiesMock =  new AppProperties();
 		appPropertiesMock.setFacility_batch_size(50);
 		Whitebox.setInternalState(helperServiceMock, appPropertiesMock);
-		doCallRealMethod().when(helperServiceMock).getDataByPractitionerRoleId(anyString(),anyString(),anyString(),any(),any(),anyString());
+		doCallRealMethod().when(helperServiceMock).getDataByPractitionerRoleId(anyString(),anyString(),anyString(),any(),any(),anyString(), false);
 		doCallRealMethod().when(helperServiceMock).getFacilitiesForOrganization(any(),anyList());
 		doCallRealMethod().when(helperServiceMock).calculateAverage(anyList(),anyList(),anyString());
 		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
 		executor.initialize();
 		when(helperServiceMock.getAsyncExecutor(
 		)).thenReturn(executor);
-		ResponseEntity<?> output = helperServiceMock.getDataByPractitionerRoleId(practitionerRoleId,"2024-01-01","2024-01-07",type,filters,"V2");
+		ResponseEntity<?> output = helperServiceMock.getDataByPractitionerRoleId(practitionerRoleId,"2024-01-01","2024-01-07",type,filters,"V2", false);
 		List<ScoreCardResponseItem> scoreCardResponseItems  =  (List<ScoreCardResponseItem>) output.getBody();
 		assertEquals(HttpStatus.OK, output.getStatusCode());
 		assert scoreCardResponseItems != null;

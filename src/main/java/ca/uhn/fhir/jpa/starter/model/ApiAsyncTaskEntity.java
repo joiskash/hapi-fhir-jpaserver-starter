@@ -1,4 +1,5 @@
 package ca.uhn.fhir.jpa.starter.model;
+
 import javax.persistence.Column;
 
 import javax.persistence.*;
