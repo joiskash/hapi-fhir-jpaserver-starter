@@ -1834,7 +1834,7 @@ public class HelperService {
 	}
 
 	public ResponseEntity<?> getDataByPractitionerRoleId(String practitionerRoleId, String startDate, String endDate,
-																		  ReportType type, LinkedHashMap<String, String> filters, String env) {
+																		  ReportType type, LinkedHashMap<String, String> filters, String env, Boolean isAnonymizationEnabled) {
 		notificationDataSource = NotificationDataSource.getInstance();
 		List<ScoreCardResponseItem> scoreCardResponseItems = new ArrayList<>();
 		List<String> facilities = new ArrayList<>();
@@ -1962,6 +1962,8 @@ public class HelperService {
 								if (TRANSFORM_SERVER_WITHOUT_ZERO.equals(transformServer)) {
 									value = calculateAverage(facility, orgIndicatorAverageResultWithoutZero, hashedId);
 								}
+								if (isAnonymizationEnabled)
+									value = Utils.anonymizedData(value, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 								scoreCardItems.add(new ScoreCardItem(orgHierarchyItem.getOrgId(), indicator.getId(),
 									value.toString(), startDate, endDate));
 							}

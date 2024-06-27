@@ -169,6 +169,9 @@ public class DashboardController {
  		String startDate = allFilters.get("from");
 		String endDate = allFilters.get("to");
 		ReportType type = ReportType.valueOf(allFilters.get("type"));
+		Boolean isAnonymizationEnabled = Validation.getJWTToken(token).getAnonymization();
+		if (isAnonymizationEnabled == null)
+			isAnonymizationEnabled = false;
 		allFilters.remove("from");
 		allFilters.remove("to");
 		allFilters.remove("type");
@@ -180,7 +183,7 @@ public class DashboardController {
 		}
 		LinkedHashMap<String, String> filters = new LinkedHashMap<>();
 		filters.putAll(allFilters);
-		return helperService.getDataByPractitionerRoleId(practitionerRoleId, startDate, endDate, type, filters, env);
+		return helperService.getDataByPractitionerRoleId(practitionerRoleId, startDate, endDate, type, filters, env, isAnonymizationEnabled);
 	}
 
 	@RequestMapping(method = RequestMethod.GET, value = "/linechart")
