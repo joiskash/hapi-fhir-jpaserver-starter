@@ -396,8 +396,19 @@ public class NotificationDataSource {
 
 	public ArrayList<ApiAsyncTaskEntity> fetchStatus(String uuid) {
 		Session session = sf.openSession();
-		Query query = session.createQuery("FROM ApiAsyncTaskEntity WHERE uuid=:param1");
+		Query query = session.createQuery("FROM ApiAsyncTaskEntity WHERE uuid=:param1 AND isAnonymousEntry=:param2");
 		query.setParameter("param1", uuid);
+		query.setParameter("param2","no");
+		ArrayList<ApiAsyncTaskEntity> resultList = (ArrayList<ApiAsyncTaskEntity>) query.getResultList();
+		session.close();
+		return resultList;
+	}
+
+	public ArrayList<ApiAsyncTaskEntity> fetchAnonymousData(String dateRangeUuid) {
+		Session session = sf.openSession();
+		Query query = session.createQuery("FROM ApiAsyncTaskEntity WHERE uuid LIKE :param1 AND isAnonymousEntry=:param2");
+		query.setParameter("param2","yes");
+		query.setParameter("param1", dateRangeUuid);
 		ArrayList<ApiAsyncTaskEntity> resultList = (ArrayList<ApiAsyncTaskEntity>) query.getResultList();
 		session.close();
 		return resultList;

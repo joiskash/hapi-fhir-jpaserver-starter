@@ -154,6 +154,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -914,6 +916,7 @@ public class HelperService {
 			asyncRecord.setDailyResult(ClobProxy.generateProxy(dailyResultJsonString));
 			asyncRecord.setSummaryResult(ClobProxy.generateProxy(base64SummaryResult));
 			asyncRecord.setLastUpdated(Date.valueOf(LocalDate.now()));
+			asyncRecord.setAnonymousEntry("no");
 			notificationDataSource.update(asyncRecord);
 		} catch (Exception e) {
 			logger.warn(ExceptionUtils.getStackTrace(e));
@@ -955,7 +958,7 @@ public class HelperService {
 
 			if (fetchAsyncData == null || fetchAsyncData.isEmpty()) {
 				try {
-					ApiAsyncTaskEntity apiAsyncTaskEntity = new ApiAsyncTaskEntity(hashOfFormattedId, ApiAsyncTaskEntity.Status.PROCESSING.name(), null, null, Date.valueOf(LocalDate.now()));
+					ApiAsyncTaskEntity apiAsyncTaskEntity = new ApiAsyncTaskEntity(hashOfFormattedId, ApiAsyncTaskEntity.Status.PROCESSING.name(), null, null, Date.valueOf(LocalDate.now()),"no");
 					datasource.insert(apiAsyncTaskEntity);
 					// Add the hash code upon successful insertion
 					hashCodesToBeProcessed.add(hashOfFormattedId);
@@ -1005,21 +1008,48 @@ public class HelperService {
 		return asyncConf.asyncExecutor();
 	}
 
-	public ResponseEntity<?> getAsyncData(Map<String, String> categoryWithHashCodes) throws SQLException, IOException {
+	public ResponseEntity<?> getAsyncData(Map<String, String> categoryWithHashCodes, Boolean isAnonymizationEnabled) throws SQLException, IOException {
 		List<DataResultJava> dataResult = new ArrayList<>();
 		for (Map.Entry<String, String> item : categoryWithHashCodes.entrySet()) {
+			String dateRangeValue = getFormattedUUID(item.getValue());
 			ArrayList<ApiAsyncTaskEntity> asyncData = datasource.fetchStatus(item.getValue());
+			ArrayList<ApiAsyncTaskEntity> anonymousAsyncData = datasource.fetchAnonymousData(dateRangeValue);
 			if (asyncData == null) return ResponseEntity.ok("Searching in Progress");
 			ApiAsyncTaskEntity asyncRecord = asyncData.get(0);
 			if (asyncRecord.getSummaryResult() == null || asyncRecord.getStatus() == ApiAsyncTaskEntity.Status.PROCESSING.name())
 				return ResponseEntity.ok("Searching in Progress");
 			String dailyResultInString = convertClobToString(asyncRecord.getDailyResult());
 			String summaryResultInString = convertClobToString(asyncRecord.getSummaryResult());
+			if (!anonymousAsyncData.isEmpty() && isAnonymizationEnabled) {
+				String formattedDailyResultString = dailyResultInString.replace("]",",");
+				ApiAsyncTaskEntity anonymousAsyncRecord = anonymousAsyncData.get(0);
+				String anonymousDailyResultInString = convertClobToString(anonymousAsyncRecord.getDailyResult()).replace("[","");
+				dailyResultInString = formattedDailyResultString + anonymousDailyResultInString;
+				System.out.println(dailyResultInString);
+			}
 			List<Map<String, String>> dailyResult = mapper.readValue(dailyResultInString, new TypeReference<List<Map<String, String>>>() {
 			});
 			dataResult.add(new DataResultJava(item.getKey(), summaryResultInString, dailyResult));
 		}
 		return ResponseEntity.ok(dataResult);
+	}
+
+	public static String getFormattedUUID(String input) {
+		// Regular expression to match the date range pattern followed by any text
+		String regex = "(\\d{4}-\\d{2}-\\d{2})(\\d{4}-\\d{2}-\\d{2})(.*)";
+
+		// Create a Pattern object
+		Pattern pattern = Pattern.compile(regex);
+
+		// Create a Matcher object
+		Matcher matcher = pattern.matcher(input);
+
+		// Find the date range followed by any text
+		if (matcher.find()) {
+			return matcher.group(1) + matcher.group(2) + matcher.group(3);
+		} else {
+			return "No date range followed by text found in the input string.";
+		}
 	}
 
 	public void saveQueryResult(String organizationId, String startDate, String endDate,
@@ -1367,7 +1397,7 @@ public class HelperService {
 	}
 
 	public ResponseEntity<?> getPieChartDataByPractitionerRoleId(String startDate, String endDate,
-																					 LinkedHashMap<String, String> filters, String env, String lga) {
+																					 LinkedHashMap<String, String> filters, String env, String lga,Boolean isAnonymizationEnabled) {
 		notificationDataSource = NotificationDataSource.getInstance();
 
 		List<PieChartDefinition> pieChartDefinitions = getPieChartItemDefinitionFromFile(env);
@@ -1391,6 +1421,8 @@ public class HelperService {
 				Double cacheValueSum = getCacheValueForDateRangeIndicatorAndMultipleOrgIdByReflection(
 					pieChartItem.getFhirPath().getTransformServer(), start, end,
 					Utils.md5Bytes(key.getBytes(StandardCharsets.UTF_8)), facilityIds);
+				if (isAnonymizationEnabled)
+					cacheValueSum = Utils.anonymizedData(cacheValueSum, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 				pieChartItems.add(new PieChartItem(pieChartItem.getId(), organizationId, pieChartItem.getHeader(),
 					pieChartItem.getName(), String.valueOf(cacheValueSum), pieChartItem.getChartId(),
 					pieChartItem.getColorHex()));
@@ -1550,7 +1582,7 @@ public class HelperService {
 	}
 
 	public ResponseEntity<?> getTabularDataByPractitionerRoleId(String startDate, String endDate,
-																					LinkedHashMap<String, String> filters, String env, String lga) {
+																					LinkedHashMap<String, String> filters, String env, String lga, Boolean isAnonymizationEnabled) {
 		List<ScoreCardItem> scoreCardItems = new ArrayList<>();
 		List<TabularItem> tabularItemList = getTabularItemListFromFile(env);
 		List<String> fhirSearchList = getFhirSearchListByFilters(filters, env);
@@ -1581,6 +1613,8 @@ public class HelperService {
 						logger.warn(ExceptionUtils.getStackTrace(e));
 					}
 				}
+				if (isAnonymizationEnabled)
+					cacheValue = Utils.anonymizedData(cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 				scoreCardItems
 					.add(new ScoreCardItem(orgId, indicator.getId(), cacheValue.toString(), startDate, endDate));
 			}
@@ -1959,7 +1993,7 @@ public class HelperService {
 	}
 
 	public ResponseEntity<?> getBarChartData(String startDate, String endDate, LinkedHashMap<String, String> filters,
-														  String env, String lga) {
+														  String env, String lga, Boolean isAnonymizationEnabled) {
 		notificationDataSource = NotificationDataSource.getInstance();
 		List<BarChartItemDataCollection> barChartItems = new ArrayList<>();
 		List<BarChartDefinition> barCharts = getBarChartItemListFromFile(env);
@@ -1984,6 +2018,8 @@ public class HelperService {
 						barChartItem.getChartId(), barChart.getCategoryId());
 					Double cacheValueSum = getCacheValueForDateRangeIndicatorAndMultipleOrgIdByReflection(
 						barComponent.getFhirPath().getTransformServer(), start, end, md5, facilityIds);
+					if (isAnonymizationEnabled)
+						cacheValueSum = Utils.anonymizedData(cacheValueSum, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 					barComponents.add(new BarComponentData(barComponent.getId(), barComponent.getBarChartItemId(),
 						cacheValueSum.toString()));
 				}
@@ -2106,7 +2142,7 @@ public class HelperService {
 	}
 
 	public ResponseEntity<?> getLineChartByPractitionerRoleId(String startDate, String endDate, ReportType type,
-																				 LinkedHashMap<String, String> filters, String env, String lga) {
+																				 LinkedHashMap<String, String> filters, String env, String lga, Boolean isAnonymizationEnabled) {
 		notificationDataSource = NotificationDataSource.getInstance();
 		List<LineChartItemCollection> lineChartItemCollections = new ArrayList<>();
 		List<LineChart> lineCharts = getLineChartDefinitionsItemListFromFile(env);
@@ -2154,6 +2190,8 @@ public class HelperService {
 						weekDayPair.second, Utils.getMd5KeyForLineCacheMd5WithCategory(key,
 							lineChartDefinition.getId(), lineChart.getId(), lineChart.getCategoryId()),
 						facilityIds);
+					if (isAnonymizationEnabled)
+						cacheValue = Utils.anonymizedData(cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 					lineChartItems.add(new LineChartItem(lineChartDefinition.getId(), String.valueOf(cacheValue),
 						weekDayPair.first.toString(), weekDayPair.second.toString()));
 				}
@@ -2889,7 +2927,7 @@ public class HelperService {
 	}
 
 	public ResponseEntity<?> processDataForReport(String startDate, String endDate, ReportType type,
-																 LinkedHashMap<String, String> filters, String env, String lga) {
+																 LinkedHashMap<String, String> filters, String env, String lga, Boolean isAnonymizationEnabled) {
 		List<ScoreCardItem> scoreCardItems = new ArrayList<>();
 		List<TabularItem> reportItemList = getReportItemListFromFile(env);
 		List<String> fhirSearchList = getFhirSearchListByFilters(filters, env);
@@ -2944,6 +2982,8 @@ public class HelperService {
 							logger.warn(ExceptionUtils.getStackTrace(e));
 						}
 					}
+					if (isAnonymizationEnabled)
+						cacheValue = Utils.anonymizedData(cacheValue, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
 					scoreCardItems
 						.add(new ScoreCardItem(orgId, indicator.getId(), cacheValue.toString(), weekDayPair.first.toString(), weekDayPair.second.toString()));
 				}
@@ -2952,7 +2992,7 @@ public class HelperService {
 		return ResponseEntity.ok(scoreCardItems);
 	}
 
-	public List<MapResponse> getEncounterForMap(String orgId, String from, String to) {
+	public List<MapResponse> getEncounterForMap(String orgId, String from, String to, Boolean isAnonymizationEnabled) {
 		Gson gson = new Gson();
 		notificationDataSource = NotificationDataSource.getInstance();
 		List<String> allClinics = fetchIdsAndOrgIdToChildrenMapPair(orgId).first;
@@ -2969,13 +3009,25 @@ public class HelperService {
 					LocationData lastAddLocationData = locationDataList.get(locationDataList.size() - 1);
 					if (lastAddLocationData.getLat().equals(entry.getLat())
 						&& lastAddLocationData.getLng().equals(entry.getLng())) {
-						lastAddLocationData.setWeight(lastAddLocationData.getWeight() + entry.getWeight());
+						if (isAnonymizationEnabled){
+							double actualWeight = lastAddLocationData.weight + entry.getWeight();
+							double anonymizedWeight = Utils.anonymizedData(actualWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+							lastAddLocationData.setWeight((int) anonymizedWeight);
+						} else{
+							lastAddLocationData.setWeight(lastAddLocationData.getWeight() + entry.getWeight());
+						}
 						locationDataList.set(locationDataList.size() - 1, lastAddLocationData);
 					} else {
 						LocationData newLocationData = new LocationData();
 						newLocationData.setLat(entry.getLat());
 						newLocationData.setLng(entry.getLng());
-						newLocationData.setWeight(entry.getWeight());
+						if (isAnonymizationEnabled){
+							double entryWeight = entry.getWeight();
+							double anonymizedWeight = Utils.anonymizedData(entryWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+							newLocationData.setWeight((int) anonymizedWeight);
+						} else{
+							newLocationData.setWeight(entry.getWeight());
+						}
 						locationDataList.add(newLocationData);
 					}
 					categoryWiseResponse.put(categoryId, locationDataList);
@@ -2983,7 +3035,13 @@ public class HelperService {
 					LocationData newLocationData = new LocationData();
 					newLocationData.setLat(entry.getLat());
 					newLocationData.setLng(entry.getLng());
-					newLocationData.setWeight(entry.getWeight());
+					if (isAnonymizationEnabled){
+						double entryWeight = entry.getWeight();
+						double anonymizedWeight = Utils.anonymizedData(entryWeight, appProperties.getMinNoisePercentage(), appProperties.getMaxNoisePercentage());
+						newLocationData.setWeight((int) anonymizedWeight);
+					} else{
+						newLocationData.setWeight(entry.getWeight());
+					}
 					ArrayList<LocationData> locationDataList = new ArrayList<>();
 					locationDataList.add(newLocationData);
 					categoryWiseResponse.put(categoryId, locationDataList);
