@@ -6,7 +6,10 @@ public class DashboardDataAnonymizer implements Anonymizer  {
 	@Override
 	public Boolean isAnonymized(String token) {
 		Boolean isAnonymizationEnabled = Validation.getJWTToken(token).getAnonymization();
-		return isAnonymizationEnabled != null;
+		if (isAnonymizationEnabled != null)
+			return isAnonymizationEnabled;
+		else
+			return false;
 	}
 
 	@Override

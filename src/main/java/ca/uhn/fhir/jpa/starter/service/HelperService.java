@@ -1024,15 +1024,17 @@ public class HelperService {
 			String dailyResultInString = convertClobToString(asyncRecord.getDailyResult());
 			String summaryResultInString = convertClobToString(asyncRecord.getSummaryResult());
 			if (!anonymousAsyncData.isEmpty() && isAnonymizationEnabled) {
-				String formattedDailyResultString = dailyResultInString.replace("]",",");
 				ApiAsyncTaskEntity anonymousAsyncRecord = anonymousAsyncData.get(0);
-				String anonymousDailyResultInString = convertClobToString(anonymousAsyncRecord.getDailyResult()).replace("[","");
-				dailyResultInString = formattedDailyResultString + anonymousDailyResultInString;
-				System.out.println(dailyResultInString);
+				String anonymousDailyResultInString = convertClobToString(anonymousAsyncRecord.getDailyResult());
+				String anonymousSummaryResultInString = convertClobToString(anonymousAsyncRecord.getSummaryResult());
+				List<Map<String, String>> anonymousDailyResult = mapper.readValue(anonymousDailyResultInString, new TypeReference<List<Map<String, String>>>() {
+				});
+				dataResult.add(new DataResultJava(item.getKey(), anonymousSummaryResultInString, anonymousDailyResult));
+			} else{
+				List<Map<String, String>> dailyResult = mapper.readValue(dailyResultInString, new TypeReference<List<Map<String, String>>>() {
+				});
+				dataResult.add(new DataResultJava(item.getKey(), summaryResultInString, dailyResult));
 			}
-			List<Map<String, String>> dailyResult = mapper.readValue(dailyResultInString, new TypeReference<List<Map<String, String>>>() {
-			});
-			dataResult.add(new DataResultJava(item.getKey(), summaryResultInString, dailyResult));
 		}
 		return ResponseEntity.ok(dataResult);
 	}
