@@ -574,7 +574,6 @@ public class HelperService {
 		return new ResponseEntity<>(map, HttpStatus.OK);
 	}
 
-	// Helper methods to check existence in FHIR and Keycloak
 	private Organization getExistingOrganizationFromFHIRServer(String name) {
 		Bundle bundle = fhirClientAuthenticatorService.getFhirClient().search()
 			.forResource(Organization.class)
@@ -590,8 +589,6 @@ public class HelperService {
 
 
 	private String getExistingKeycloakGroup(String groupName) {
-		// Implement the logic to query Keycloak to check for existing groups by name
-		// Return the group ID if found, otherwise return null
 		RealmResource realmResource = fhirClientAuthenticatorService.getKeycloak()
 			.realm(appProperties.getKeycloak_Client_Realm());
 		try {
@@ -623,7 +620,7 @@ public class HelperService {
 
 	private boolean updateOrganizationWithKeycloakGroupId(Organization organization, String keycloakGroupId, List<String> invalidClinics, String countryName) {
 		boolean identifierFound = false;
-		String identifierSystem = "http://www.iprdgroup.com/Identifier/System/KeycloakId"; // Replace with your actual URL
+		String identifierSystem = "http://www.iprdgroup.com/Identifier/System/KeycloakId";
 
 		// Check if the identifier exists and update it
 		for (Identifier identifier : organization.getIdentifier()) {
