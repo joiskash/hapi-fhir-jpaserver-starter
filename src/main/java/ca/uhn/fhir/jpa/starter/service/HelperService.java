@@ -383,7 +383,7 @@ public class HelperService {
 
 			String groupId = null;
 			GroupRepresentation keycloakGroup = getKeycloakGroup(facilityUID);
-			if (keycloakGroup != null) {
+			if (null != keycloakGroup) {
 				groupId = keycloakGroup.getId();
 			}
 
