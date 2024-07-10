@@ -526,11 +526,14 @@ public class HelperService {
 				if (existingFacility != null) {
 					facilityOrganizationId = existingFacility.getIdElement().getIdPart();
 					facilityGroupId = getExistingKeycloakGroup(facilityUID);
-					facilityLocationId = getExistingLocationFromFHIRServer(facilityOrganizationId);
-					if(facilityLocationId == null){
+					Location existingLocation =  getExistingLocationFromFHIRServer(facilityOrganizationId);
+					if(existingLocation != null){
+						facilityLocationId = existingLocation.getIdElement().getIdPart();
+					} else {
 						logger.warn("Not found Location Id for Organization = " + facilityOrganizationId );
 						logger.warn("Facility Id = "+ facilityUID );
 						logger.warn("Facility name = "+ facilityName);
+						continue;
 					}
 					if (facilityGroupId == null) {
 						GroupRepresentation facilityGroupRep = KeycloakTemplateHelper.facilityGroup(existingFacility.getName(), wardGroupId, facilityOrganizationId, facilityLocationId, type, ownership, facilityUID, facilityCode, argusoftIdentifier);
@@ -545,6 +548,12 @@ public class HelperService {
 						invalidClinics.add("Group creation failed for facility: " + facilityName);
 						continue;
 					}
+
+					if (!updateLocationWithKeycloakGroupId(existingLocation, facilityGroupId, invalidClinics, facilityName)) {
+						invalidClinics.add("Group creation failed for facility: " + facilityName);
+						continue;
+					}
+
 
 				} else {
 					Organization clinicOrganization = FhirResourceTemplateHelper.clinic(facilityName, facilityUID, facilityCode, countryCode, phoneNumber, stateName, lgaName, wardName, type, wardId, csvData[10]);
@@ -614,7 +623,7 @@ public class HelperService {
 		return null;
 	}
 
-	private String getExistingLocationFromFHIRServer(String organizationId) {
+	private Location getExistingLocationFromFHIRServer(String organizationId) {
 		Bundle bundle = fhirClientAuthenticatorService.getFhirClient().search()
 			.forResource(Location.class)
 			.where(new ReferenceClientParam("organization").hasId(organizationId))
@@ -622,8 +631,8 @@ public class HelperService {
 			.execute();
 
 		if (bundle != null && !bundle.getEntry().isEmpty()) {
-			Location location = (Location) bundle.getEntry().get(0).getResource();
-			return location.getIdElement().getIdPart();
+			 return (Location) bundle.getEntry().get(0).getResource();
+
 		}
 		return null;
 	}
@@ -653,6 +662,36 @@ public class HelperService {
 		MethodOutcome outcome = fhirClientAuthenticatorService.getFhirClient().update().resource(organization).execute();
 		if (outcome == null || outcome.getResource() == null) {
 			invalidClinics.add("Failed to update the organization resource with Keycloak group ID for country: " + countryName);
+			return false;
+		}
+
+		return true;
+	}
+
+	private boolean updateLocationWithKeycloakGroupId(Location location, String keycloakGroupId, List<String> invalidClinics, String facilityName) {
+		boolean identifierFound = false;
+		String identifierSystem = "http://www.iprdgroup.com/Identifier/System/KeycloakId"; // Replace with your actual URL
+
+		// Check if the identifier exists and update it
+		for (Identifier identifier : location.getIdentifier()) {
+			if (identifierSystem.equals(identifier.getSystem())) {
+				identifier.setValue(keycloakGroupId);
+				identifierFound = true;
+				break;
+			}
+		}
+
+		// If the identifier doesn't exist, add a new one
+		if (!identifierFound) {
+			location.addIdentifier()
+				.setSystem(identifierSystem)
+				.setValue(keycloakGroupId);
+		}
+
+		// Update the location resource on the FHIR server
+		MethodOutcome outcome = fhirClientAuthenticatorService.getFhirClient().update().resource(location).execute();
+		if (outcome == null || outcome.getResource() == null) {
+			invalidClinics.add("Failed to update the location resource with Keycloak group ID for facility: " + facilityName);
 			return false;
 		}
 
