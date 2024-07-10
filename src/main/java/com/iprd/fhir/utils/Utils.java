@@ -573,16 +573,4 @@ public class Utils {
 			.map(Date::toLocalDate)
 			.noneMatch(date -> date.equals(currentLocalDate));
 	}
-
-	public static Double anonymizedData(double actualValue, double minPercent, double maxPercent) {
-		double noisePercent = getRandomPercent(minPercent, maxPercent);
-		double noiseValue = (actualValue * noisePercent / 100);
-		double anonymizedValue = actualValue + noiseValue;
-		return (double) Math.round(anonymizedValue);
-	}
-
-	public static Double getRandomPercent(double min, double max){
-		Random random = new Random();
-		return min + (max - min) * random.nextDouble();
-	}
 }
