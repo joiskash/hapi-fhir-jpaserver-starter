@@ -1209,37 +1209,6 @@ public class HelperService {
 
 	}
 
-	public void saveAnonymousDataInAsyncTable(DataResult dataResult, String id){
-		List<Map<String, String>> dailyResult = dataResult.getDailyResult();
-		if (id.contains("bio")) {
-			int i;
-			if (!dailyResult.isEmpty()){
-				for (i = 0; i < dailyResult.size(); i++){
-					String randomGeneratedName = Utils.generateRandomName();
-					String randomGeneratedOclId = Utils.generateRandomPatientOclId();
-					String randomDOB = Utils.generateRandomDate();
-					Map<String, String> singleDailyResult = dailyResult.get(i);
-					singleDailyResult.put("Name", randomGeneratedName);
-					singleDailyResult.put("Card Number",randomGeneratedOclId);
-					singleDailyResult.put("Date of Birth",randomDOB);
-				}
-			}
-		}
-		byte[] summaryResult = dataResult.getSummaryResult();
-		String base64SummaryResult = Base64.getEncoder().encodeToString(summaryResult);
-		String dailyResultJsonString = new Gson().toJson(dailyResult);
-		String uuidHash = getFormattedUuid(id);
-		ApiAsyncTaskEntity apiAsyncTaskEntity = new ApiAsyncTaskEntity(
-			uuidHash,
-			ApiAsyncTaskEntity.Status.COMPLETED.name(),
-			ClobProxy.generateProxy(base64SummaryResult),
-			ClobProxy.generateProxy(dailyResultJsonString),
-			Date.valueOf(LocalDate.now()),
-			ISANONYMIZED.YES.name()
-		);
-		notificationDataSource.insert(apiAsyncTaskEntity);
-	}
-
 	public String convertClobToString(Clob input) throws IOException, SQLException {
 		Reader reader = input.getCharacterStream();
 		StringWriter writer = new StringWriter();
@@ -1324,29 +1293,62 @@ public class HelperService {
 		return asyncConf.asyncExecutor();
 	}
 
+	public void saveAnonymousDataInAsyncTable(DataResult dataResult, String id){
+		List<Map<String, String>> dailyResult = dataResult.getDailyResult();
+		if (id.contains("bio")) {
+			int i;
+			if (!dailyResult.isEmpty()){
+				for (i = 0; i < dailyResult.size(); i++){
+					String randomGeneratedName = Utils.generateRandomName();
+					String randomGeneratedOclId = Utils.generateRandomPatientOclId();
+					String randomDOB = Utils.generateRandomDate();
+					Map<String, String> singleDailyResult = dailyResult.get(i);
+					singleDailyResult.put("Name", randomGeneratedName);
+					singleDailyResult.put("Card Number",randomGeneratedOclId);
+					singleDailyResult.put("Date of Birth",randomDOB);
+				}
+			}
+			byte[] summaryResult = dataResult.getSummaryResult();
+			String base64SummaryResult = Base64.getEncoder().encodeToString(summaryResult);
+			String dailyResultJsonString = new Gson().toJson(dailyResult);
+			String uuidHash = getFormattedUuid(id);
+			ApiAsyncTaskEntity apiAsyncTaskEntity = new ApiAsyncTaskEntity(
+				uuidHash,
+				ApiAsyncTaskEntity.Status.COMPLETED.name(),
+				ClobProxy.generateProxy(base64SummaryResult),
+				ClobProxy.generateProxy(dailyResultJsonString),
+				Date.valueOf(LocalDate.now()),
+				ISANONYMIZED.YES.name()
+			);
+			notificationDataSource.insert(apiAsyncTaskEntity);
+		}
+	}
+
 	public ResponseEntity<?> getAsyncData(Map<String, String> categoryWithHashCodes, Boolean isAnonymizationEnabled) throws SQLException, IOException {
 		List<DataResultJava> dataResult = new ArrayList<>();
 		for (Map.Entry<String, String> item : categoryWithHashCodes.entrySet()) {
-			String dateRangeValue = getFormattedUuid(item.getValue());
 			ArrayList<ApiAsyncTaskEntity> asyncData = datasource.fetchStatus(item.getValue());
-			ArrayList<ApiAsyncTaskEntity> anonymousAsyncData = datasource.fetchAnonymousData(dateRangeValue);
 			if (asyncData == null) return ResponseEntity.ok("Searching in Progress");
 			ApiAsyncTaskEntity asyncRecord = asyncData.get(0);
 			if (asyncRecord.getSummaryResult() == null || asyncRecord.getStatus() == ApiAsyncTaskEntity.Status.PROCESSING.name())
 				return ResponseEntity.ok("Searching in Progress");
 			String dailyResultInString = convertClobToString(asyncRecord.getDailyResult());
 			String summaryResultInString = convertClobToString(asyncRecord.getSummaryResult());
-			if (!anonymousAsyncData.isEmpty() && isAnonymizationEnabled) {
+			List<Map<String, String>> dailyResult = mapper.readValue(dailyResultInString, new TypeReference<List<Map<String, String>>>() {
+			});
+			dataResult.add(new DataResultJava(item.getKey(), summaryResultInString, dailyResult));
+		}
+		if (isAnonymizationEnabled){
+			String formattedUuid = getFormattedUuid(categoryWithHashCodes.get("patient-bio-data"));
+			ArrayList<ApiAsyncTaskEntity> anonymousAsyncData = datasource.fetchAnonymousData(formattedUuid);
+			if (!anonymousAsyncData.isEmpty()) {
+				dataResult.removeIf(dataResultJava -> dataResultJava.getCategoryId().contains("bio"));
 				ApiAsyncTaskEntity anonymousAsyncRecord = anonymousAsyncData.get(0);
 				String anonymousDailyResultInString = convertClobToString(anonymousAsyncRecord.getDailyResult());
 				String anonymousSummaryResultInString = convertClobToString(anonymousAsyncRecord.getSummaryResult());
 				List<Map<String, String>> anonymousDailyResult = mapper.readValue(anonymousDailyResultInString, new TypeReference<List<Map<String, String>>>() {
 				});
-				dataResult.add(new DataResultJava(item.getKey(), anonymousSummaryResultInString, anonymousDailyResult));
-			} else{
-				List<Map<String, String>> dailyResult = mapper.readValue(dailyResultInString, new TypeReference<List<Map<String, String>>>() {
-				});
-				dataResult.add(new DataResultJava(item.getKey(), summaryResultInString, dailyResult));
+				dataResult.add(new DataResultJava("patient-bio-data", anonymousSummaryResultInString, anonymousDailyResult));
 			}
 		}
 		return ResponseEntity.ok(dataResult);
