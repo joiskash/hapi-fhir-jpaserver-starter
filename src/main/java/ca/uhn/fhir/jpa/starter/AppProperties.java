@@ -132,16 +132,6 @@ public class AppProperties {
 		this.hyperSpectral_bucket_name = hyperSpectral_bucket_name;
 	}
 
-	private String hyper_spectral_bucket_name = null;
-
-	public String getHyper_spectral_bucket_name() {
-		return hyper_spectral_bucket_name;
-	}
-
-	public void setHyper_spectral_bucket_name(String hyper_spectral_bucket_name) {
-		this.hyper_spectral_bucket_name = hyper_spectral_bucket_name;
-	}
-
 	public String getCalib_path() {
 		return calib_path;
 	}

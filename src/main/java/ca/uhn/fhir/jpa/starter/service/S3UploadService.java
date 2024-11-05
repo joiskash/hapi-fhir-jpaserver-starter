@@ -56,7 +56,7 @@ public class S3UploadService {
 				for (File file : filesInDirectory) {
 					String keyName = baseS3Key + "/" + directory.toPath().relativize(file.toPath()).toString().replace("\\", "/");
 
-					if (!uploadFile(appProperties.getHyper_spectral_bucket_name(), keyName, file)) {
+					if (!uploadFile(appProperties.getHyperSpectral_bucket_name(), keyName, file)) {
 						uploadSuccessful = false; // Mark as failed if any upload fails
 						logger.error("Failed to upload file: " + file.getName());
 					}

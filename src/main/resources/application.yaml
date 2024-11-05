@@ -70,7 +70,7 @@ tus-server:
    
 hapi:
    fhir:
-      hyper_spectral_bucket_name : exampleBucket
+      hyperSpectral_bucket_name : ""
       minNoisePercentage: 20.0
       maxNoisePercentage: 60.0
 #      hibernate.cache.use_structured_entries: false
