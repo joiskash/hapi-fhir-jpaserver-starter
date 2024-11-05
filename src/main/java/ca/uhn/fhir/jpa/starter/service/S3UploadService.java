@@ -1,11 +1,8 @@
 package ca.uhn.fhir.jpa.starter.service;
 
 import ca.uhn.fhir.jpa.starter.AppProperties;
-import com.amazonaws.auth.AWSStaticCredentialsProvider;
-import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.regions.Regions;
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.AmazonS3Client;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,7 +10,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -60,7 +56,7 @@ public class S3UploadService {
 				for (File file : filesInDirectory) {
 					String keyName = baseS3Key + "/" + directory.toPath().relativize(file.toPath()).toString().replace("\\", "/");
 
-					if (!uploadFile(appProperties.getHyperSpectral_bucket_name(), keyName, file)) {
+					if (!uploadFile(appProperties.getHyper_spectral_bucket_name(), keyName, file)) {
 						uploadSuccessful = false; // Mark as failed if any upload fails
 						logger.error("Failed to upload file: " + file.getName());
 					}
