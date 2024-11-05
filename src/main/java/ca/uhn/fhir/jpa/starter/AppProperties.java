@@ -123,6 +123,16 @@ public class AppProperties {
 	private List<String> organization_ids_for_caching = null;
 	private List<String> envs_for_caching = null;
 
+	private String hyperSpectral_bucket_name = "";
+
+	public String getHyperSpectral_bucket_name() {
+		return hyperSpectral_bucket_name;
+	}
+
+	public void setHyperSpectral_bucket_name(String hyperSpectral_bucket_name) {
+		this.hyperSpectral_bucket_name = hyperSpectral_bucket_name;
+	}
+
 	public String getCalib_path() {
 		return calib_path;
 	}
