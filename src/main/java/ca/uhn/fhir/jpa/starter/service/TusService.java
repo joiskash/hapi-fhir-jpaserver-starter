@@ -26,7 +26,7 @@ public class TusService {
 	private TusServerProperties tusServerProperties;
 
 	public void getMetaData(String uploadUrl) throws Exception {
-		System.out.println(fileStrategyContext.getEncodedMetaData(uploadUrl));
+		logger.info("TUS Upload Info:" + fileStrategyContext.getEncodedMetaData(uploadUrl));
 	}
 
 	public void transferToFinalStorage(String uploadUrl, String fileType) throws Exception {
@@ -45,6 +45,7 @@ public class TusService {
 			if (fileStrategyContext.isFileLocked(uploadUrl)) {
 				logger.warn("File is locked, skipping transfer for: " + uploadUrl);
 			}else{
+				getMetaData(uploadUrl);
 				transferToFinalStorage(uploadUrl, fileType);
 			}
 		}
